@@ -1,9 +1,12 @@
-import os
-
 import discord
 from discord.ext import commands
+import logging
+import sys
+import os
+
 
 from config import config
+from config.bot_config import FukurouConfig
 from audiocontroller import AudioController
 from settings import Settings
 from utils import guild_to_audiocontroller, guild_to_settings
@@ -16,22 +19,6 @@ intents.message_content = True
 bot = commands.Bot(command_prefix=config.BOT_PREFIX,
                    intents = intents,
                    pm_help=True, case_insensitive=True)
-
-
-if __name__ == '__main__':
-
-    config.ABSOLUTE_PATH = os.path.dirname(os.path.abspath(__file__))
-    config.COOKIE_PATH = config.ABSOLUTE_PATH + config.COOKIE_PATH
-
-    if config.BOT_TOKEN == "":
-        print("Error: No bot token!")
-        exit
-
-    for extension in initial_extensions:
-        try:
-            bot.load_extension(extension)
-        except Exception as e:
-            print(e)
 
 
 @bot.event
@@ -85,4 +72,34 @@ async def register(guild):
                         print(e)
 
 
-bot.run(config.BOT_TOKEN)
+if __name__ == '__main__':
+
+    config.ABSOLUTE_PATH = os.path.dirname(os.path.abspath(__file__))
+    config.COOKIE_PATH = config.ABSOLUTE_PATH + config.COOKIE_PATH
+
+    # Setting up a logger
+    logger = logging.getLogger("Fukurou")
+    logger.setLevel(logging.DEBUG)
+
+    handler = logging.FileHandler(filename = "fukurou.log", encoding = "utf-8", mode = "w")
+    handler.setFormatter(logging.Formatter("[%(asctime)s | %(levelname)s] %(name)s\t%(message)s"))
+
+    logger.addHandler(handler)
+
+    # Initialize bot config
+    fukurou_config = FukurouConfig(logger = logger)
+    fukurou_config.init()
+
+    bot_token = fukurou_config.getToken()
+    
+    if bot_token == "" or bot_token == fukurou_config.DEFAULT_FORMAT["token"]:
+        print("Error: No bot token!")
+        sys.exit()
+
+    for extension in initial_extensions:
+        try:
+            bot.load_extension(extension)
+        except Exception as e:
+            print(e)
+
+    bot.run(bot_token)
