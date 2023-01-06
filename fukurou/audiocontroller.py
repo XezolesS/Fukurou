@@ -5,9 +5,10 @@ import discord
 import yt_dlp
 from config import config
 
-from musicbot import linkutils, utils
-from musicbot.playlist import Playlist
-from musicbot.songinfo import Song
+import linkutils
+import utils
+from playlist import Playlist
+from songinfo import Song
 
 
 class AudioController(object):

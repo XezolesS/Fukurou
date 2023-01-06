@@ -3,7 +3,8 @@ import asyncio
 import discord
 from config import config
 from discord.ext import commands
-from musicbot import linkutils, utils
+import linkutils
+import utils
 
 
 class Music(commands.Cog):

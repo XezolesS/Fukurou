@@ -4,13 +4,17 @@ import discord
 from discord.ext import commands
 
 from config import config
-from musicbot.audiocontroller import AudioController
-from musicbot.settings import Settings
-from musicbot.utils import guild_to_audiocontroller, guild_to_settings
+from audiocontroller import AudioController
+from settings import Settings
+from utils import guild_to_audiocontroller, guild_to_settings
 
-initial_extensions = ['musicbot.commands.music',
-                      'musicbot.commands.general', 'musicbot.plugins.button']
+initial_extensions = ['commands.music',
+                      'commands.general', 'plugins.button']
+intents = discord.Intents.default()
+intents.message_content = True
+
 bot = commands.Bot(command_prefix=config.BOT_PREFIX,
+                   intents = intents,
                    pm_help=True, case_insensitive=True)
 
 
@@ -81,4 +85,4 @@ async def register(guild):
                         print(e)
 
 
-bot.run(config.BOT_TOKEN, bot=True, reconnect=True)
+bot.run(config.BOT_TOKEN)
