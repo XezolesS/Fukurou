@@ -6,70 +6,13 @@ import os
 
 
 from config import config
-from config.bot_config import FukurouConfig
-from audiocontroller import AudioController
-from settings import Settings
-from utils import guild_to_audiocontroller, guild_to_settings
+from fukurou import Fukurou
 
 initial_extensions = ['commands.music',
                       'commands.general', 'plugins.button']
+                      
 intents = discord.Intents.default()
 intents.message_content = True
-
-bot = commands.Bot(command_prefix=config.BOT_PREFIX,
-                   intents = intents,
-                   pm_help=True, case_insensitive=True)
-
-
-@bot.event
-async def on_ready():
-    print(config.STARTUP_MESSAGE)
-    await bot.change_presence(status=discord.Status.online, activity=discord.Game(name="Music, type {}help".format(config.BOT_PREFIX)))
-
-    for guild in bot.guilds:
-        await register(guild)
-        print("Joined {}".format(guild.name))
-
-    print(config.STARTUP_COMPLETE_MESSAGE)
-
-
-@bot.event
-async def on_guild_join(guild):
-    print(guild.name)
-    await register(guild)
-
-
-async def register(guild):
-
-    guild_to_settings[guild] = Settings(guild)
-    guild_to_audiocontroller[guild] = AudioController(bot, guild)
-
-    sett = guild_to_settings[guild]
-
-    try:
-        await guild.me.edit(nick=sett.get('default_nickname'))
-    except:
-        pass
-
-    if config.GLOBAL_DISABLE_AUTOJOIN_VC == True:
-        return
-
-    vc_channels = guild.voice_channels
-
-    if sett.get('vc_timeout') == False:
-        if sett.get('start_voice_channel') == None:
-            try:
-                await guild_to_audiocontroller[guild].register_voice_channel(guild.voice_channels[0])
-            except Exception as e:
-                print(e)
-
-        else:
-            for vc in vc_channels:
-                if vc.id == sett.get('start_voice_channel'):
-                    try:
-                        await guild_to_audiocontroller[guild].register_voice_channel(vc_channels[vc_channels.index(vc)])
-                    except Exception as e:
-                        print(e)
 
 
 if __name__ == '__main__':
@@ -86,20 +29,13 @@ if __name__ == '__main__':
 
     logger.addHandler(handler)
 
-    # Initialize bot config
-    fukurou_config = FukurouConfig(logger = logger)
-    fukurou_config.init()
-
-    bot_token = fukurou_config.getToken()
-    
-    if bot_token == "" or bot_token == fukurou_config.DEFAULT_FORMAT["token"]:
-        print("Error: No bot token!")
-        sys.exit()
+    # Instantiate bot
+    bot = Fukurou(logger = logger, intents = intents, command_prefix = config.BOT_PREFIX)
 
     for extension in initial_extensions:
         try:
             bot.load_extension(extension)
         except Exception as e:
             print(e)
-
-    bot.run(bot_token)
+            
+    bot.run()
