@@ -1,4 +1,5 @@
 import asyncio
+from discord import ApplicationContext
 from config import config
 
 # A dictionary that remembers which guild belongs to which audiocontroller
@@ -8,15 +9,15 @@ guild_to_audiocontroller = {}
 guild_to_settings = {}
 
 
-def get_guild(bot, command):
-    """Gets the guild a command belongs to. Useful, if the command was sent via pm."""
-    if command.guild is not None:
-        return command.guild
-    for guild in bot.guilds:
-        for channel in guild.voice_channels:
-            if command.author in channel.members:
-                return guild
-    return None
+#def get_guild(bot, command):
+#    """Gets the guild a command belongs to. Useful, if the command was sent via pm."""
+#    if command.guild is not None:
+#        return command.guild
+#    for guild in bot.guilds:
+#        for channel in guild.voice_channels:
+#            if command.author in channel.members:
+#                return guild
+#    return None
 
 
 async def connect_to_channel(guild, dest_channel_name, ctx, switch=False, default=True):
@@ -47,7 +48,7 @@ async def connect_to_channel(guild, dest_channel_name, ctx, switch=False, defaul
         await ctx.send(config.CHANNEL_NOT_FOUND_MESSAGE + str(dest_channel_name))
 
 
-async def is_connected(ctx):
+async def is_connected(ctx: ApplicationContext):
     try:
         voice_channel = ctx.guild.voice_client.channel
         return voice_channel
@@ -55,25 +56,26 @@ async def is_connected(ctx):
         return None
 
 
-async def play_check(ctx):
-
+async def play_check(ctx: ApplicationContext):
     sett = guild_to_settings[ctx.guild]
 
     cm_channel = sett.get('command_channel')
     vc_rule = sett.get('user_must_be_in_vc')
 
     if cm_channel != None:
-        if cm_channel != ctx.message.channel.id:
+        if cm_channel != ctx.author.dm_channel.id:
             await ctx.send(config.WRONG_CHANNEL_MESSAGE)
             return False
 
     if vc_rule == True:
-        author_voice = ctx.message.author.voice
+        author_voice = ctx.author.voice.channel
         bot_vc = ctx.guild.voice_client.channel
+        
         if author_voice == None:
             await ctx.send(config.USER_NOT_IN_VC_MESSAGE)
             return False
-        elif ctx.message.author.voice.channel != bot_vc:
+
+        elif ctx.author.voice.channel != bot_vc:
             await ctx.send(config.USER_NOT_IN_VC_MESSAGE)
             return False
 

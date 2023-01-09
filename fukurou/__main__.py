@@ -8,8 +8,11 @@ import os
 from config import config
 from fukurou import Fukurou
 
-initial_extensions = ['commands.music',
-                      'commands.general', 'plugins.button']
+initial_extensions = [
+    'cogs.music',
+    'cogs.general', 
+    'plugins.button'
+]
                       
 intents = discord.Intents.default()
 intents.message_content = True
