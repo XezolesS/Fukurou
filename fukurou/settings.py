@@ -2,10 +2,9 @@ import json
 import os
 
 import discord
-from config import config
+from .config import config
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
-
 
 class Settings():
 

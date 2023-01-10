@@ -1,36 +1,42 @@
 import discord
 from discord import ApplicationContext
-from config import config
 from discord.ext import commands
 from discord.ext.commands import has_permissions
-import utils
-from ext.music import AudioController
-from utils import guild_to_audiocontroller, guild_to_settings
 
-class General(commands.Cog):
+from fukurou.config import config
+from fukurou.ext.music import Player
+from fukurou.fukurou import Fukurou
+
+class GeneralCog(commands.Cog):
     """ A collection of the commands for moving the bot around in you server.
 
         Attributes:
             bot: The instance of the bot that is executing the commands.
     """
-
-    def __init__(self, bot):
+    def __init__(self, bot: Fukurou):
         self.bot = bot
 
-    # logic is split to uconnect() for wide usage
     @commands.slash_command(name='connect', description=config.HELP_CONNECT_SHORT)
     async def __connect(self, ctx: ApplicationContext):  # dest_channel_name: str
-        audiocontroller = utils.guild_to_audiocontroller[ctx.guild]
+        if ctx.guild is None:
+            await ctx.respond(config.NO_GUILD_MESSAGE)
+            return
+
+        player = self.bot.players[ctx.guild.id]
         
-        await audiocontroller.uconnect(ctx)
+        await player.connect(ctx)
         await ctx.respond(f'Connected to {ctx.voice_client.channel}')
 
     @commands.slash_command(name='disconnect', description=config.HELP_DISCONNECT_SHORT)
     async def __disconnect(self, ctx: ApplicationContext):
-        connected_channel = ctx.voice_client.channel;
-        audiocontroller = utils.guild_to_audiocontroller[ctx.guild]
+        if ctx.guild is None:
+            await ctx.respond(config.NO_GUILD_MESSAGE)
+            return
 
-        await audiocontroller.udisconnect()
+        connected_channel = ctx.voice_client.channel
+        player = self.bot.players[ctx.guild.id]
+
+        await player.disconnect()
         await ctx.respond(f'Disconnected from {connected_channel}')
 
     @commands.slash_command(name='reset', description=config.HELP_DISCONNECT_SHORT)
@@ -38,32 +44,39 @@ class General(commands.Cog):
         if ctx.guild is None:
             await ctx.respond(config.NO_GUILD_MESSAGE)
             return
-        await utils.guild_to_audiocontroller[ctx.guild].stop_player()
-        await ctx.guild.voice_client.disconnect(force=True)
+        
+        player = self.bot.players[ctx.guild.id]
+        await player.stop()
 
-        guild_to_audiocontroller[ctx.guild] = AudioController(self.bot, ctx.guild)
-        await guild_to_audiocontroller[ctx.guild].register_voice_channel(ctx.author.voice.channel)
+        player = Player(self.bot, ctx.guild)
+        await player.connect(ctx)
 
-        await ctx.respond("{} Connected to {}".format(":white_check_mark:", ctx.author.voice.channel.name))
+        await ctx.respond("{} Connected to {}".format(":white_check_mark:", ctx.voice_client.channel))
 
-    @commands.slash_command(name='changechannel', description=config.HELP_CHANGECHANNEL_SHORT)
-    async def __changechannel(self, ctx: ApplicationContext):
-        vchannel = await utils.is_connected(ctx)
-        if vchannel == ctx.author.voice.channel:
-            await ctx.respond("{} Already connected to {}".format(":white_check_mark:", vchannel.name))
-            return
-
+    @commands.slash_command(name='switch', description=config.HELP_CHANGECHANNEL_SHORT)
+    async def __switch(self, ctx: ApplicationContext):
         if ctx.guild is None:
             await ctx.respond(config.NO_GUILD_MESSAGE)
             return
-        await utils.guild_to_audiocontroller[ctx.guild].stop_player()
-        await ctx.guild.voice_client.disconnect(force=True)
 
-        guild_to_audiocontroller[ctx.guild] = AudioController(
-            self.bot, ctx.guild)
-        await guild_to_audiocontroller[ctx.guild].register_voice_channel(ctx.author.voice.channel)
+        player = self.bot.players[ctx.guild.id]
+        if not player.is_connected():
+            await player.connect(ctx)
+            await ctx.respond(f'Connected to {ctx.voice_client.channel}')
+            return
 
-        await ctx.respond("{} Switched to {}".format(":white_check_mark:", ctx.author.voice.channel.name))
+        previous_channel = player.guild.voice_client.channel
+        if previous_channel == ctx.author.voice.channel:
+            await ctx.respond("{} Already connected to {}".format(":white_check_mark:", previous_channel))
+            return
+
+        await player.stop()
+        await player.disconnect()
+
+        player = Player(self.bot, ctx.guild)
+        await player.connect(ctx)
+
+        await ctx.respond("{} Switched to {}".format(":white_check_mark:", ctx.voice_client.channel))
 
     @commands.slash_command(name='ping', description=config.HELP_PING_SHORT)
     async def __ping(self, ctx: ApplicationContext):
@@ -72,8 +85,7 @@ class General(commands.Cog):
     @commands.slash_command(name='setting', description=config.HELP_SETTINGS_SHORT)
     @has_permissions(administrator=True)
     async def __setting(self, ctx: ApplicationContext, *args):
-
-        sett = guild_to_settings[ctx.guild]
+        sett = self.bot.settings[ctx.guild]
 
         if len(args) == 0:
             await ctx.respond(embed=await sett.format())
@@ -97,4 +109,4 @@ class General(commands.Cog):
         await ctx.respond(embed=embed)
 
 def setup(bot):
-    bot.add_cog(General(bot))
+    bot.add_cog(GeneralCog(bot))

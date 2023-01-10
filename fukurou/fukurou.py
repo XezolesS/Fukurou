@@ -5,14 +5,12 @@ from discord.ext.commands import Bot
 from logging import Logger
 import sys
 
-from config import config
-from config.fukurou_config import FukurouConfig
-from audiocontroller import AudioController
-from settings import Settings
-from utils import guild_to_audiocontroller, guild_to_settings
+from .config import config
+from .config.fukurou_config import FukurouConfig
+from .settings import Settings
 
 class Fukurou(Bot):
-    def __init__(self, logger: Logger, intents: Intents = discord.Intents.default(), command_prefix: str = "$"):
+    def __init__(self, logger: Logger, intents: Intents = discord.Intents.default()):
         # Initialize bot config
         fukurou_config = FukurouConfig(logger = logger)
         fukurou_config.init()
@@ -25,8 +23,10 @@ class Fukurou(Bot):
 
         intents = intents
 
-        super().__init__(intents = intents, command_prefix = command_prefix)
+        super().__init__(intents = intents)
 
+        self.settings = {}
+        self.players = {}
 
     async def on_ready(self):
         print(config.STARTUP_MESSAGE)
@@ -38,17 +38,19 @@ class Fukurou(Bot):
 
         print(config.STARTUP_COMPLETE_MESSAGE)
 
-
     async def on_guild_join(self, guild: Guild):
         print(guild.name)
         await self.register(guild)
 
+    async def register(self, guild: Guild):   
+        from .ext.music import Player
 
-    async def register(self, guild):
-        guild_to_settings[guild] = Settings(guild)
-        guild_to_audiocontroller[guild] = AudioController(self, guild)
+        self.settings[guild.id] = Settings(guild)
+        self.players[guild.id] = Player(self, guild)
 
-        sett = guild_to_settings[guild]
+        print(f'add players to guild {guild.id}')
+
+        sett = self.settings[guild.id]
 
         try:
             await guild.me.edit(nick=sett.get('default_nickname'))
@@ -63,7 +65,7 @@ class Fukurou(Bot):
         if sett.get('vc_timeout') == False:
             if sett.get('start_voice_channel') == None:
                 try:
-                    await guild_to_audiocontroller[guild].register_voice_channel(guild.voice_channels[0])
+                    await self.players[guild.id].register_voice_channel(guild.voice_channels[0])
                 except Exception as e:
                     print(e)
 
@@ -71,10 +73,9 @@ class Fukurou(Bot):
                 for vc in vc_channels:
                     if vc.id == sett.get('start_voice_channel'):
                         try:
-                            await guild_to_audiocontroller[guild].register_voice_channel(vc_channels[vc_channels.index(vc)])
+                            await self.players[guild.id].register_voice_channel(vc_channels[vc_channels.index(vc)])
                         except Exception as e:
                             print(e)
-
 
     def run(self):
         super().run(self.token)

@@ -4,22 +4,19 @@ import logging
 import sys
 import os
 
-
-from config import config
-from fukurou import Fukurou
+import fukurou.cogs
+from .config import config
+from fukurou.fukurou import Fukurou
 
 initial_extensions = [
-    'cogs.music',
-    'cogs.general', 
-    'plugins.button'
+    'fukurou.cogs.general',
+    'fukurou.cogs.music'
 ]
                       
 intents = discord.Intents.default()
 intents.message_content = True
 
-
 if __name__ == '__main__':
-
     config.ABSOLUTE_PATH = os.path.dirname(os.path.abspath(__file__))
     config.COOKIE_PATH = config.ABSOLUTE_PATH + config.COOKIE_PATH
 
@@ -33,7 +30,7 @@ if __name__ == '__main__':
     logger.addHandler(handler)
 
     # Instantiate bot
-    bot = Fukurou(logger = logger, intents = intents, command_prefix = config.BOT_PREFIX)
+    bot = Fukurou(logger = logger, intents = intents)
 
     for extension in initial_extensions:
         try:
