@@ -6,7 +6,6 @@ from discord.ext import commands
 import linkutils
 import utils
 
-
 class Music(commands.Cog):
     """ A collection of the commands related to music playback.
 
@@ -18,7 +17,7 @@ class Music(commands.Cog):
         self.bot = bot
 
     @commands.slash_command(name='play', description=config.HELP_YT_SHORT)
-    async def commandPlay(self, ctx: ApplicationContext, *, track: str):
+    async def __play(self, ctx: ApplicationContext, *, track: str):
         audiocontroller = utils.guild_to_audiocontroller[ctx.guild]
 
         if (await utils.is_connected(ctx) == None):
@@ -45,19 +44,18 @@ class Music(commands.Cog):
             await ctx.respond(config.SONGINFO_ERROR)
             return
 
-        if song.origin == linkutils.Origins.Default:
+        if song.origin == linkutils.Origin.Default:
 
             if audiocontroller.current_song != None and len(audiocontroller.playlist.playque) == 0:
-                await ctx.respond(embed=song.info.format_output(config.SONGINFO_NOW_PLAYING))
+                await ctx.respond(embed=song.format_output(config.SONGINFO_NOW_PLAYING))
             else:
-                await ctx.respond(embed=song.info.format_output(config.SONGINFO_QUEUE_ADDED))
+                await ctx.respond(embed=song.format_output(config.SONGINFO_QUEUE_ADDED))
 
-        elif song.origin == linkutils.Origins.Playlist:
+        elif song.origin == linkutils.Origin.Playlist:
             await ctx.respond(config.SONGINFO_PLAYLIST_QUEUED)
-    
 
     @commands.slash_command(name='loop', description=config.HELP_LOOP_SHORT)
-    async def commandLoop(self, ctx: ApplicationContext):
+    async def __loop(self, ctx: ApplicationContext):
         audiocontroller = utils.guild_to_audiocontroller[ctx.guild]
 
         if await utils.play_check(ctx) == False:
@@ -74,9 +72,8 @@ class Music(commands.Cog):
             audiocontroller.playlist.loop = False
             await ctx.respond("Loop disabled :x:")
 
-
     @commands.slash_command(name='shuffle', description=config.HELP_SHUFFLE_SHORT)
-    async def commandShuffle(self, ctx: ApplicationContext):
+    async def __shuffle(self, ctx: ApplicationContext):
         audiocontroller = utils.guild_to_audiocontroller[ctx.guild]
 
         if await utils.play_check(ctx) == False:
@@ -95,9 +92,8 @@ class Music(commands.Cog):
         for song in list(audiocontroller.playlist.playque)[:config.MAX_SONG_PRELOAD]:
             asyncio.ensure_future(audiocontroller.preload(song))
 
-
     @commands.slash_command(name='pause', description=config.HELP_PAUSE_SHORT)
-    async def commandPause(self, ctx: ApplicationContext):
+    async def __pause(self, ctx: ApplicationContext):
         if await utils.play_check(ctx) == False:
             return
 
@@ -109,9 +105,8 @@ class Music(commands.Cog):
         ctx.guild.voice_client.pause()
         await ctx.respond("Playback Paused :pause_button:")
 
-
     @commands.slash_command(name='queue', description=config.HELP_QUEUE_SHORT)
-    async def commandQueue(self, ctx: ApplicationContext):
+    async def __queue(self, ctx: ApplicationContext):
         if await utils.play_check(ctx) == False:
             return
 
@@ -142,9 +137,8 @@ class Music(commands.Cog):
 
         await ctx.respond(embed=embed)
 
-
     @commands.slash_command(name='stop', description=config.HELP_STOP_SHORT)
-    async def commandStop(self, ctx: ApplicationContext):
+    async def __stop(self, ctx: ApplicationContext):
         if await utils.play_check(ctx) == False:
             return
 
@@ -156,9 +150,8 @@ class Music(commands.Cog):
         await utils.guild_to_audiocontroller[ctx.guild].stop_player()
         await ctx.respond("Stopped all sessions :octagonal_sign:")
 
-
     @commands.slash_command(name='move', description=config.HELP_MOVE_SHORT)
-    async def commandMove(self, ctx: ApplicationContext, *args):
+    async def __move(self, ctx: ApplicationContext, *args):
         if len(args) != 2:
             ctx.respond("Wrong number of arguments")
             return
@@ -181,9 +174,8 @@ class Music(commands.Cog):
             return
         await ctx.respond("Moved")
 
-
     @commands.slash_command(name='skip', description=config.HELP_SKIP_SHORT)
-    async def commandSkip(self, ctx: ApplicationContext):
+    async def __skip(self, ctx: ApplicationContext):
         if await utils.play_check(ctx) == False:
             return
 
@@ -203,9 +195,8 @@ class Music(commands.Cog):
         ctx.guild.voice_client.stop()
         await ctx.respond("Skipped current song :fast_forward:")
 
-
     @commands.slash_command(name='clear', description=config.HELP_CLEAR_SHORT)
-    async def commandClear(self, ctx: ApplicationContext):
+    async def __clear(self, ctx: ApplicationContext):
         if await utils.play_check(ctx) == False:
             return
 
@@ -215,9 +206,8 @@ class Music(commands.Cog):
         audiocontroller.playlist.loop = False
         await ctx.respond("Cleared queue :no_entry_sign:")
 
-
-    @commands.slash_command(name='prev', description=config.HELP_PREV_SHORT)
-    async def commandPrevious(self, ctx: ApplicationContext):
+    @commands.slash_command(name='previous', description=config.HELP_PREV_SHORT)
+    async def __previous(self, ctx: ApplicationContext):
         if await utils.play_check(ctx) == False:
             return
 
@@ -233,9 +223,8 @@ class Music(commands.Cog):
         await utils.guild_to_audiocontroller[ctx.guild].prev_song()
         await ctx.respond("Playing previous song :track_previous:")
 
-
     @commands.slash_command(name='resume', description=config.HELP_RESUME_SHORT)
-    async def commandResume(self, ctx: ApplicationContext):
+    async def __resume(self, ctx: ApplicationContext):
         if await utils.play_check(ctx) == False:
             return
 
@@ -245,9 +234,8 @@ class Music(commands.Cog):
         ctx.guild.voice_client.resume()
         await ctx.respond("Resumed playback :arrow_forward:")
 
-
     @commands.slash_command(name='songinfo', description=config.HELP_SONGINFO_SHORT)
-    async def commandSongInfo(self, ctx: ApplicationContext):
+    async def _songinfo(self, ctx: ApplicationContext):
         if await utils.play_check(ctx) == False:
             return
 
@@ -257,11 +245,10 @@ class Music(commands.Cog):
         song = utils.guild_to_audiocontroller[ctx.guild].current_song
         if song is None:
             return
-        await ctx.respond(embed=song.info.format_output(config.SONGINFO_SONGINFO))
-
+        await ctx.respond(embed=song.format_output(config.SONGINFO_SONGINFO))
 
     @commands.slash_command(name='history', description=config.HELP_HISTORY_SHORT)
-    async def commandHistory(self, ctx: ApplicationContext):
+    async def __history(self, ctx: ApplicationContext):
         if await utils.play_check(ctx) == False:
             return
 
@@ -270,9 +257,8 @@ class Music(commands.Cog):
             return
         await ctx.respond(utils.guild_to_audiocontroller[ctx.guild].track_history())
 
-
     @commands.slash_command(name='volume', description=config.HELP_VOL_SHORT)
-    async def commandVolume(self, ctx: ApplicationContext, *args):
+    async def __volume(self, ctx: ApplicationContext, *args):
         if ctx.guild is None:
             await ctx.respond(config.NO_GUILD_MESSAGE)
             return
@@ -298,7 +284,6 @@ class Music(commands.Cog):
             utils.guild_to_audiocontroller[current_guild].volume = volume
         except:
             await ctx.respond("Error: Volume must be a number 1-100")
-
 
 def setup(bot):
     bot.add_cog(Music(bot))

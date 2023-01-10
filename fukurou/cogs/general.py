@@ -4,9 +4,8 @@ from config import config
 from discord.ext import commands
 from discord.ext.commands import has_permissions
 import utils
-from audiocontroller import AudioController
+from ext.music import AudioController
 from utils import guild_to_audiocontroller, guild_to_settings
-
 
 class General(commands.Cog):
     """ A collection of the commands for moving the bot around in you server.
@@ -20,23 +19,22 @@ class General(commands.Cog):
 
     # logic is split to uconnect() for wide usage
     @commands.slash_command(name='connect', description=config.HELP_CONNECT_SHORT)
-    async def commandConnect(self, ctx: ApplicationContext):  # dest_channel_name: str
+    async def __connect(self, ctx: ApplicationContext):  # dest_channel_name: str
         audiocontroller = utils.guild_to_audiocontroller[ctx.guild]
         
         await audiocontroller.uconnect(ctx)
         await ctx.respond(f'Connected to {ctx.voice_client.channel}')
 
-
     @commands.slash_command(name='disconnect', description=config.HELP_DISCONNECT_SHORT)
-    async def commandDisconnect(self, ctx: ApplicationContext):
+    async def __disconnect(self, ctx: ApplicationContext):
+        connected_channel = ctx.voice_client.channel;
         audiocontroller = utils.guild_to_audiocontroller[ctx.guild]
 
         await audiocontroller.udisconnect()
-        await ctx.respond(f'Disconnected from {ctx.voice_client.channel}')
-
+        await ctx.respond(f'Disconnected from {connected_channel}')
 
     @commands.slash_command(name='reset', description=config.HELP_DISCONNECT_SHORT)
-    async def commandReset(self, ctx: ApplicationContext):
+    async def __reset(self, ctx: ApplicationContext):
         if ctx.guild is None:
             await ctx.respond(config.NO_GUILD_MESSAGE)
             return
@@ -48,9 +46,8 @@ class General(commands.Cog):
 
         await ctx.respond("{} Connected to {}".format(":white_check_mark:", ctx.author.voice.channel.name))
 
-
     @commands.slash_command(name='changechannel', description=config.HELP_CHANGECHANNEL_SHORT)
-    async def commandChangeChannel(self, ctx: ApplicationContext):
+    async def __changechannel(self, ctx: ApplicationContext):
         vchannel = await utils.is_connected(ctx)
         if vchannel == ctx.author.voice.channel:
             await ctx.respond("{} Already connected to {}".format(":white_check_mark:", vchannel.name))
@@ -68,15 +65,13 @@ class General(commands.Cog):
 
         await ctx.respond("{} Switched to {}".format(":white_check_mark:", ctx.author.voice.channel.name))
 
-
     @commands.slash_command(name='ping', description=config.HELP_PING_SHORT)
-    async def commandPing(self, ctx: ApplicationContext):
+    async def __ping(self, ctx: ApplicationContext):
         await ctx.respond("Pong")
-
 
     @commands.slash_command(name='setting', description=config.HELP_SETTINGS_SHORT)
     @has_permissions(administrator=True)
-    async def commandSetting(self, ctx: ApplicationContext, *args):
+    async def __setting(self, ctx: ApplicationContext, *args):
 
         sett = guild_to_settings[ctx.guild]
 
@@ -94,14 +89,12 @@ class General(commands.Cog):
         elif response is True:
             await ctx.respond("Setting updated!")
 
-
     @commands.slash_command(name='addbot', description=config.HELP_ADDBOT_SHORT)
-    async def commandAddBot(self, ctx: ApplicationContext):
+    async def __addbot(self, ctx: ApplicationContext):
         embed = discord.Embed(title="Invite", description=config.ADD_MESSAGE +
                               "(https://discordapp.com/oauth2/authorize?client_id={}&scope=bot>)".format(self.bot.user.id))
 
         await ctx.respond(embed=embed)
-
 
 def setup(bot):
     bot.add_cog(General(bot))
