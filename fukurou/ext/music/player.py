@@ -1,4 +1,4 @@
-# pylint: disable = C0114
+# pylint: disable = C0114, W0108, W0613
 import asyncio
 import discord
 from discord import (
@@ -31,30 +31,38 @@ class Player():
         self.volume = 100
 
         self.timer = Timer(self.handler_timeout)
+        self.logger = self.bot.loggers.get_logger(guild)
 
     async def connect(self, ctx: ApplicationContext):
         '''Connect to voice channel that the client is joining.'''
         if ctx.author.voice is None:
+            self.logger.error('Failed to join voice channel: Command author not joined.\n')
             await ctx.respond(config.NO_GUILD_MESSAGE)
             return False
 
         if self.is_connected():
+            self.logger.error('Failed to join voice channel: Already connected.\n')
             await ctx.respond(config.ALREADY_CONNECTED_MESSAGE)
             return False
 
+        self.logger.info(f'Joined to voice channel {ctx.author.voice.channel.name}')
         await ctx.author.voice.channel.connect(reconnect = True, timeout = None)
 
     async def disconnect(self):
         '''Disconnect from assigned voice channel.'''
         self.stop()
+
+        self.logger.info(f'Disconnected from voice channel {self.guild.voice_client.channel}')
         await self.guild.voice_client.disconnect(force = True)
 
     async def play(self):
         '''Plays the first track of the playlist if one available.'''
         if len(self.playlist) == 0:
+            self.logger.info('All track have been played.')
             return None
 
         self.current_track = self.playlist.next()
+        self.logger.info(f'Playing track {self.current_track.title}...')
 
         # Play the track
         source = discord.FFmpegPCMAudio(
@@ -72,18 +80,23 @@ class Player():
     def stop(self):
         '''Stops the player and clears queue.'''
         if self.guild.voice_client is None:
+            self.logger.warning('Tried to stop player while is not connected to voice channel.\n')
             return
 
         self.loop = False
         self.playlist.clear()
         self.guild.voice_client.stop()
 
+        self.logger.info('Player has been stopped.')
+
     def pause(self):
         '''Pause the player.'''
         if self.guild.voice_client is None:
+            self.logger.warning('Tried to pause player while is not connected to voice channel.\n')
             return
 
         if not self.is_playing():
+            self.logger.warning('Tried to pause player while is not playing.\n')
             return
 
         self.guild.voice_client.pause()
@@ -91,19 +104,23 @@ class Player():
     def resume(self):
         '''Resume the player.'''
         if self.guild.voice_client is None:
+            self.logger.warning('Tried to resume player while is not connected to voice channel.\n')
             return
 
         if not self.is_paused():
+            self.logger.warning('Tried to resume player while is not paused.\n')
             return
 
         self.guild.voice_client.resume()
 
     def skip(self):
         '''Skip to next track.'''
+        self.logger.info('Skipping to the next track...')
         self.guild.voice_client.stop()
 
     def previous(self):
         '''Skip to previous track.'''
+        self.logger.info('Skipping to the previous track...')
         self.guild.voice_client.stop()
         self.playlist.insert(0, self.playlist.previous())
 
@@ -111,18 +128,25 @@ class Player():
         '''Add a track to the queue.'''
         self.playlist.add(track = track)
 
+        self.logger.info(f'The track {track.title} has been added to the queue.')
+
     def toggle_loop(self):
-        '''Toggle loop'''
+        '''Toggle loop.'''
         self.loop = not self.loop
+        self.logger.info('Loop ' + 'enabled' if self.loop is True else 'disabled' + '.')
+
         return self.loop
 
     def set_volume(self, volume: int):
         '''Set a volume to a value of 1-100.'''
         if volume not in range(0, 100 + 1):
+            self.logger.debug('Volume is not in range of 0 to 100.')
             return False
 
         self.volume = volume
         self.guild.voice_client.source.volume = float(self.volume) / 100.0
+
+        self.logger.info(f'Player volume has been set to {volume}')
 
         return True
 
@@ -133,8 +157,8 @@ class Player():
 
         if channel is None:
             return True
-        else:
-            return self.guild.voice_client.channel == channel
+
+        return self.guild.voice_client.channel == channel
 
     def is_playing(self):
         '''Check if the player is currently playing musics.'''

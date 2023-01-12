@@ -104,7 +104,7 @@ class Music():
             result = regex.search(content)
             url = result.group(0)
             return url
-        
+
         return None
 
     @staticmethod

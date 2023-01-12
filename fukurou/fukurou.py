@@ -53,9 +53,9 @@ class Fukurou(Bot):
         await self.__register(guild)
 
     async def __register(self, guild: Guild):
+        self.loggers.add_logger(guild)
         self.settings[guild.id] = Settings(guild)
         self.players[guild.id] = music.Player(self, guild)
-        self.loggers.add_logger(guild)
 
         self.loggers.get_logger(guild).info(f'Registered to guild {guild.name}')
 
