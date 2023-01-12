@@ -1,3 +1,4 @@
+# pylint: disable = C0114
 import asyncio
 import discord
 from discord import (
@@ -12,6 +13,14 @@ from .music import Music
 from .playlist import Playlist
 
 class Player():
+    '''
+    Audio player that is assigned to the guild.
+
+    Attributes:
+        bot (Fukurou): A bot object.
+        guild (Guild): A guild to be assigned.
+    '''
+
     def __init__(self, bot: Fukurou, guild: Guild):
         self.bot = bot
         self.guild = guild
@@ -24,7 +33,7 @@ class Player():
         self.timer = Timer(self.handler_timeout)
 
     async def connect(self, ctx: ApplicationContext):
-        """Connect to voice channel that the client is joining."""
+        '''Connect to voice channel that the client is joining.'''
         if ctx.author.voice is None:
             await ctx.respond(config.NO_GUILD_MESSAGE)
             return False
@@ -33,15 +42,15 @@ class Player():
             await ctx.respond(config.ALREADY_CONNECTED_MESSAGE)
             return False
 
-        await ctx.author.voice.channel.connect(reconnect=True, timeout=None)
+        await ctx.author.voice.channel.connect(reconnect = True, timeout = None)
 
     async def disconnect(self):
-        """Disconnect from assigned voice channel."""
+        '''Disconnect from assigned voice channel.'''
         self.stop()
-        await self.guild.voice_client.disconnect(force=True)
-    
+        await self.guild.voice_client.disconnect(force = True)
+
     async def play(self):
-        """Plays the first track of the playlist if one available."""
+        '''Plays the first track of the playlist if one available.'''
         if len(self.playlist) == 0:
             return None
 
@@ -50,8 +59,8 @@ class Player():
         # Play the track
         source = discord.FFmpegPCMAudio(
             self.current_track.url,
-            before_options='-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5')
-        self.guild.voice_client.play(source, after=lambda error: self.on_track_finished(error))
+            before_options = '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5')
+        self.guild.voice_client.play(source, after = lambda error: self.on_track_finished(error))
         self.guild.voice_client.source = discord.PCMVolumeTransformer(
             self.guild.voice_client.source
         )
@@ -59,9 +68,9 @@ class Player():
 
         # Reset the timer
         self.timer.reset()
-        
+
     def stop(self):
-        """Stops the player and clears queue."""
+        '''Stops the player and clears queue.'''
         if self.guild.voice_client is None:
             return
 
@@ -70,17 +79,17 @@ class Player():
         self.guild.voice_client.stop()
 
     def pause(self):
-        """Pause the player."""
+        '''Pause the player.'''
         if self.guild.voice_client is None:
             return
 
         if not self.is_playing():
             return
-        
+
         self.guild.voice_client.pause()
 
     def resume(self):
-        """Resume the player."""
+        '''Resume the player.'''
         if self.guild.voice_client is None:
             return
 
@@ -90,22 +99,25 @@ class Player():
         self.guild.voice_client.resume()
 
     def skip(self):
+        '''Skip to next track.'''
         self.guild.voice_client.stop()
 
     def previous(self):
+        '''Skip to previous track.'''
         self.guild.voice_client.stop()
         self.playlist.insert(0, self.playlist.previous())
 
     def add_track(self, track: Music):
-        self.playlist.add(track=track)
+        '''Add a track to the queue.'''
+        self.playlist.add(track = track)
 
     def toggle_loop(self):
-        """Toggle loop"""
+        '''Toggle loop'''
         self.loop = not self.loop
         return self.loop
 
     def set_volume(self, volume: int):
-        """Set a volume to a value of 1-100"""
+        '''Set a volume to a value of 1-100.'''
         if volume not in range(0, 100 + 1):
             return False
 
@@ -115,7 +127,7 @@ class Player():
         return True
 
     def is_connected(self, channel: VoiceChannel = None):
-        """Check if the bot is connected to voice channel."""
+        '''Check if the bot is connected to voice channel.'''
         if self.guild.voice_client is None:
             return False
 
@@ -125,37 +137,42 @@ class Player():
             return self.guild.voice_client.channel == channel
 
     def is_playing(self):
+        '''Check if the player is currently playing musics.'''
         return (self.is_connected() and
             self.current_track is not None and 
             self.guild.voice_client.is_playing())
-    
+
     def is_paused(self):
+        '''Check if the player is paused.'''
         return (self.is_connected() and 
             self.current_track is not None and 
             self.guild.voice_client.is_paused())
 
     def on_track_finished(self, error):
-        """
-            A callback after play() has finished.\n
-            Automatically plays next song if one available.
-        """
+        '''
+        A callback after play() has finished.\n
+        Automatically plays next song if one available.
+        '''
         self.playlist.add_history(self.current_track)
         self.current_track = None
 
         if self.playlist.is_empty():
             return
 
-        if self.loop == True:
+        if self.loop is True:
             played = self.playlist.previous()
             self.playlist.add(played)
 
         self.bot.loop.create_task(self.play())
 
     async def handler_timeout(self):
+        '''A handler for timeout.'''
         if self.guild.voice_client.channel is not None:
             pass
 
 class Timer:
+    '''Timer to handle timeout from the voice channels.'''
+
     def __init__(self, callback):
         self._callback = callback
         self._task = asyncio.create_task(self._job())
@@ -165,8 +182,10 @@ class Timer:
         await self._callback()
 
     def reset(self):
+        '''Reset timer.'''
         self.cancel()
         self._task = asyncio.create_task(self._job())
 
     def cancel(self):
+        '''Cancel timer.'''
         self._task.cancel()

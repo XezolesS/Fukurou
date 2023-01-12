@@ -1,3 +1,4 @@
+# pylint: disable = C0114
 __all__ = [
     'origin',
     'playlist',

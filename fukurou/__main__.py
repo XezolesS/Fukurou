@@ -1,24 +1,21 @@
-import discord
-from discord.ext import commands
-import logging
-import sys
+# pylint: disable = C0114, E0237, W0703
 import os
+import discord
 
-import fukurou.cogs
+from .fukurou import Fukurou
 from .config import config
-from fukurou.fukurou import Fukurou
 
 initial_extensions = [
     'fukurou.cogs.general',
     'fukurou.cogs.music'
 ]
-                      
-intents = discord.Intents.default()
-intents.message_content = True
 
 if __name__ == '__main__':
     config.ABSOLUTE_PATH = os.path.dirname(os.path.abspath(__file__))
     config.COOKIE_PATH = config.ABSOLUTE_PATH + config.COOKIE_PATH
+
+    intents = discord.Intents.default()
+    intents.message_content = True
 
     # Instantiate bot
     bot = Fukurou(intents = intents)
@@ -28,5 +25,5 @@ if __name__ == '__main__':
             bot.load_extension(extension)
         except Exception as e:
             print(e)
-            
+
     bot.run()

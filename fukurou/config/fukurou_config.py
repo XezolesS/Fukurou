@@ -1,5 +1,5 @@
+# pylint: disable = C0114, W0702
 import json
-import logging
 from os.path import exists
 import sys
 
@@ -7,35 +7,37 @@ CONFIG_CLIENT_ID = 'client_id'
 CONFIG_PERMISSIONS = 'permissions'
 CONFIG_TOKEN = 'token'
 CONFIG_ENABLE_LOGGER = 'enable_logger'
+DEFAULT_FORMAT = {
+    CONFIG_CLIENT_ID: 'INSERT_CLIENTID_HERE',
+    CONFIG_PERMISSIONS: 'INSERT_PERMISSIONS_HERE',
+    CONFIG_TOKEN: 'INSERT_TOKEN_HERE',
+    CONFIG_ENABLE_LOGGER: False
+}
+
+FILE_PATH = './discord_token.json'
 
 class FukurouConfig:
-    FILE_PATH = './discord_token.json'
-    DEFAULT_FORMAT = {
-        CONFIG_CLIENT_ID: 'INSERT_CLIENTID_HERE',
-        CONFIG_PERMISSIONS: 'INSERT_PERMISSIONS_HERE',
-        CONFIG_TOKEN: 'INSERT_TOKEN_HERE',
-        CONFIG_ENABLE_LOGGER: False
-    }
+    '''
+    Config manager for Fukurou bot.
+    '''
 
-    # Check if json file exists
-    def exists(self): 
-        return exists(self.FILE_PATH)
-    
-    # Initialize json for token
+    def exists(self):
+        '''Check if config gile exists.'''
+        return exists(FILE_PATH)
+
     def init(self, force_init = False):
+        '''Initialize config. Reset config file when "force_init = True".'''
         if not force_init and self.exists():
             return
 
-        json_str = json.dumps(self.DEFAULT_FORMAT, sort_keys = True, indent = 4)
+        json_str = json.dumps(DEFAULT_FORMAT, sort_keys = True, indent = 4)
 
-        file = open(self.FILE_PATH, "w")
-        file.write(json_str)
-        file.close()
+        with open(file = FILE_PATH, mode = 'w', encoding = 'utf-8') as file:
+            file.write(json_str)
 
-    # Read a Client ID from json file
-    def getClientId(self):
-        deserialized = self.__readConfig()
-        # self.logger.debug(f"Read client_id from {self.FILE_PATH}: " + deserialized[CONFIG_CLIENT_ID])
+    def get_client_id(self):
+        '''Read a Client ID from config file.'''
+        deserialized = self.__read_config()
 
         try:
             return deserialized[CONFIG_CLIENT_ID]
@@ -43,10 +45,9 @@ class FukurouConfig:
             print(f'CONFIG: No attribute "{CONFIG_CLIENT_ID}" found!')
             sys.exit()
 
-    # Read permissions from json file
-    def getPermissions(self):
-        deserialized = self.__readConfig()
-        # self.logger.debug(f"Read permissions from {self.FILE_PATH}: " + deserialized[CONFIG_PERMISSIONS])
+    def get_permissions(self):
+        '''Read permissions from config file'''
+        deserialized = self.__read_config()
 
         try:
             return deserialized[CONFIG_PERMISSIONS]
@@ -55,9 +56,9 @@ class FukurouConfig:
             sys.exit()
 
     # Read a token from json file
-    def getToken(self):
-        deserialized = self.__readConfig()
-        # self.logger.debug(f"Read token from {self.FILE_PATH}: " + deserialized["token"])
+    def get_token(self):
+        '''Read a token from config file.'''
+        deserialized = self.__read_config()
 
         try:
             return deserialized[CONFIG_TOKEN]
@@ -65,8 +66,9 @@ class FukurouConfig:
             print(f'CONFIG: No attribute "{CONFIG_TOKEN}" found!')
             sys.exit()
 
-    def getEnableLogger(self):
-        deserialized = self.__readConfig()
+    def get_enable_logger(self):
+        '''Read a enable_logger flag from config file.'''
+        deserialized = self.__read_config()
 
         try:
             return deserialized[CONFIG_ENABLE_LOGGER]
@@ -74,22 +76,23 @@ class FukurouConfig:
             print(f'CONFIG: No attribute "{CONFIG_ENABLE_LOGGER}" found!')
             sys.exit()
 
-    def getInviteLink(self):
+    def get_invite_link(self):
+        '''Read a config file and build invite link.'''
         if not self.exists():
-            self.logger.error(f"Cannot find {self.FILE_PATH}!")
+            print(f'CONFIG: Cannot find {FILE_PATH}!')
             return None
 
-        client_id = self.getClientId()
-        permissions = self.getPermissions()
+        client_id = self.get_client_id()
+        permissions = self.get_permissions()
 
-        return f"https://discord.com/oauth2/authorize?client_id={client_id}&permissions={permissions}&scope=bot"
+        return f'https://discord.com/oauth2/authorize?client_id={client_id}&permissions={permissions}&scope=bot'
 
-    def __readConfig(self):
+    def __read_config(self):
         if not self.exists():
-            self.logger.error(f"Cannot find {self.FILE_PATH}!")
+            print(f'CONFIG: Cannot find {FILE_PATH}!')
             return None
 
-        file = open(self.FILE_PATH, "r")
-        json_str = file.read()
-        
+        with open(file = FILE_PATH, mode = 'r', encoding = 'utf-8') as file:
+            json_str = file.read()
+
         return json.loads(json_str)

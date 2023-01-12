@@ -132,7 +132,7 @@ dmypy.json
 generated/
 
 # API Key files
-*_token.json
+*_token.*
 
 # Fukurou logs
 /logs
