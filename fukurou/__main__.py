@@ -20,17 +20,8 @@ if __name__ == '__main__':
     config.ABSOLUTE_PATH = os.path.dirname(os.path.abspath(__file__))
     config.COOKIE_PATH = config.ABSOLUTE_PATH + config.COOKIE_PATH
 
-    # Setting up a logger
-    logger = logging.getLogger("Fukurou")
-    logger.setLevel(logging.DEBUG)
-
-    handler = logging.FileHandler(filename = "fukurou.log", encoding = "utf-8", mode = "w")
-    handler.setFormatter(logging.Formatter("[%(asctime)s | %(levelname)s] %(name)s\t%(message)s"))
-
-    logger.addHandler(handler)
-
     # Instantiate bot
-    bot = Fukurou(logger = logger, intents = intents)
+    bot = Fukurou(intents = intents)
 
     for extension in initial_extensions:
         try:

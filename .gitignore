@@ -133,3 +133,6 @@ generated/
 
 # API Key files
 *_token.json
+
+# Fukurou logs
+/logs
