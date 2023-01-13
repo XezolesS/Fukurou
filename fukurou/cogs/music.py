@@ -7,10 +7,10 @@ from fukurou.config import config
 from fukurou.enums import (
     Origin
 )
-from fukurou.ext.music import Music
+from fukurou.ext.music import get_music
 
 class MusicCog(commands.Cog):
-    ''' 
+    '''
     A collection of the commands related to music playback.
 
     Attributes:
@@ -30,7 +30,7 @@ class MusicCog(commands.Cog):
         if track.isspace() or not track:
             return
 
-        music = Music.from_url(track)
+        music = get_music(track)
 
         if music is None:
             await ctx.respond(config.SONGINFO_ERROR)
@@ -41,9 +41,9 @@ class MusicCog(commands.Cog):
 
             if not player.is_playing():
                 await player.play()
-                await ctx.respond(embed = music.format_output(config.SONGINFO_NOW_PLAYING))
+                await ctx.respond(embed = music.to_embed(config.SONGINFO_NOW_PLAYING))
             else:
-                await ctx.respond(embed = music.format_output(config.SONGINFO_QUEUE_ADDED))
+                await ctx.respond(embed = music.to_embed(config.SONGINFO_QUEUE_ADDED))
         elif music.origin == Origin.Playlist:
             await ctx.respond(config.SONGINFO_PLAYLIST_QUEUED)
 
