@@ -1,7 +1,7 @@
 # pylint: disable = C0114
 __all__ = [
     'fukurou',
-    'settings'
+    'setting'
 ]
 
 import fukurou.cogs
@@ -10,4 +10,4 @@ import fukurou.enums
 import fukurou.ext.music
 
 import fukurou.fukurou
-import fukurou.settings
+import fukurou.setting

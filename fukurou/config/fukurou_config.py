@@ -22,7 +22,7 @@ class FukurouConfig:
     '''
 
     def exists(self):
-        '''Check if config gile exists.'''
+        '''Check if config file exists.'''
         return exists(FILE_PATH)
 
     def init(self, force_init = False):

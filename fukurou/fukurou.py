@@ -14,7 +14,7 @@ from .config.fukurou_config import (
     CONFIG_TOKEN,
     FukurouConfig
 )
-from .settings import Settings
+from .setting import GuildSettings
 from .logging import GuildLoggers
 
 class Fukurou(Bot):
@@ -31,9 +31,9 @@ class Fukurou(Bot):
         fukurou_config = FukurouConfig()
         fukurou_config.init()
 
-        self.settings = {}
-        self.players = {}
         self.loggers = GuildLoggers()
+        self.settings = GuildSettings()
+        self.players = {}
         self.token = fukurou_config.get_token()
         if self.token in ('', DEFAULT_FORMAT[CONFIG_TOKEN]):
             sys.exit()
@@ -54,18 +54,18 @@ class Fukurou(Bot):
 
     async def __register(self, guild: Guild):
         self.loggers.add_logger(guild)
-        self.settings[guild.id] = Settings(guild)
+        self.settings.add_settings(guild)
         self.players[guild.id] = music.Player(self, guild)
 
         self.loggers.get_logger(guild).info(f'Registered to guild {guild.name}')
 
-        setting = self.settings[guild.id]
-        try:
-            await guild.me.edit(nick = setting.get('default_nickname'))
-        except:
-            pass
+        # setting = self.settings
+        # try:
+        #    await guild.me.edit(nick = setting.get('default_nickname'))
+        # except:
+        #    pass
 
-        await self.__autojoin_voicechannel(guild = guild)
+        # await self.__autojoin_voicechannel(guild = guild)
 
     async def __autojoin_voicechannel(self, guild: Guild):
         if config.GLOBAL_DISABLE_AUTOJOIN_VC is True:

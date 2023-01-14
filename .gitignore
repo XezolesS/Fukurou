@@ -136,3 +136,6 @@ generated/
 
 # Fukurou logs
 /logs
+
+# Fukurou settings
+/settings
