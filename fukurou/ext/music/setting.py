@@ -14,3 +14,9 @@ class MusicSettings(Settings):
         self.settings = {
             SETTINGS_MUSIC_VOLUME: SETTINGS_MUSIC_VOLUME_VALUE
         }
+
+    def set_volume(self, volume: int) -> None:
+        self.set(key = SETTINGS_MUSIC_VOLUME, value = volume)
+
+    def get_volume(self) -> int:
+        return self.get(key = SETTINGS_MUSIC_VOLUME)

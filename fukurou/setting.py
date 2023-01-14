@@ -128,8 +128,15 @@ class GuildSettings():
             if sett.exists() is False or force_init is True:
                 sett.write()
 
-            sett.reload()
+            sett.read()
 
     def add_settings(self, guild: Guild) -> None:
         '''Add settings for the guild.'''
         self.init_settings(guild)
+
+    def get_settings(self, guild: Guild, name: str) -> None | Settings:
+        for setting in self.settings:
+            if setting.name == name:
+                return setting
+
+        return None
