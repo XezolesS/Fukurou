@@ -25,13 +25,14 @@ class Player():
         self.bot = bot
         self.guild = guild
 
+        self.timer = Timer(self.handler_timeout)
+        self.logger = self.bot.loggers.get_logger(guild)
+        self.settings = bot.settings.get_settings(guild, 'Music')
+
         self.playlist = Playlist()
         self.current_track = None
         self.loop = False
-        self.volume = 100
-
-        self.timer = Timer(self.handler_timeout)
-        self.logger = self.bot.loggers.get_logger(guild)
+        self.volume = int(self.settings.get_volume())
 
     async def connect(self, ctx: ApplicationContext):
         '''Connect to voice channel that the client is joining.'''
@@ -72,7 +73,7 @@ class Player():
         self.guild.voice_client.source = discord.PCMVolumeTransformer(
             self.guild.voice_client.source
         )
-        self.set_volume(self.volume)
+        self.guild.voice_client.source.volume = float(self.volume) / 100.0
 
         # Reset the timer
         self.timer.reset()
@@ -139,12 +140,16 @@ class Player():
 
     def set_volume(self, volume: int):
         '''Set a volume to a value of 1-100.'''
+        if self.volume == volume:
+            return False
+
         if volume not in range(0, 100 + 1):
             self.logger.debug('Volume is not in range of 0 to 100.')
             return False
 
         self.volume = volume
         self.guild.voice_client.source.volume = float(self.volume) / 100.0
+        self.settings.set_volume(volume)
 
         self.logger.info(f'Player volume has been set to {volume}')
 
