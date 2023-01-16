@@ -8,7 +8,10 @@ from fukurou.config import config
 from fukurou.enums import (
     Origin
 )
-from fukurou.ext.music import get_music
+from fukurou.ext.music import (
+    MusicSettings,
+    get_music
+)
 
 class MusicCog(commands.Cog):
     '''
@@ -19,11 +22,30 @@ class MusicCog(commands.Cog):
     '''
     def __init__(self, bot):
         self.bot = bot
+        self.channel_id = None
 
     music = SlashCommandGroup(
         name = 'music',
         description = 'Commands about playing music!'
     )
+
+    # configs = music.create_subgroup(
+    #    name = 'config',
+    #    description = 'Configs about music.'
+    # )
+
+    @commands.Cog.listener()
+    async def on_application_command(self, ctx: ApplicationContext):
+        settings = self.__get_guild_settings(ctx.guild)
+        music_channel_id = settings.get_command_channel()
+        if music_channel_id is None:
+            self.channel_id = None
+
+        if music_channel_id == ctx.channel_id:
+            self.channel_id = music_channel_id
+            await ctx.respond(ctx.channel.name)
+
+        self.channel_id = None
 
     @music.command(
         name = 'play',
@@ -34,7 +56,7 @@ class MusicCog(commands.Cog):
 
         # Check if the author is currently in the channel.
         if ctx.author.voice is None:
-            await ctx.respond('You are not in the voice channel!')
+            await ctx.message('You are not in the voice channel!')
             return
 
         # Check if the bot is not connected to author's channel.
@@ -250,24 +272,50 @@ class MusicCog(commands.Cog):
         name = 'volume',
         description = config.HELP_VOL_SHORT
     )
-    @discord.commands.option(name = 'volume', type=int)
-    async def __volume(self, ctx: ApplicationContext, value: int = None):
+    @discord.commands.option(
+        name = 'amount',
+        description = 'Set the volume in % (100 to 0)',
+        input_type = int,
+        min_value = 0,
+        max_value = 100,
+        required = False
+    )
+    async def __volume(self, ctx: ApplicationContext, amount: int):
         player = self.bot.players[ctx.guild.id]
 
-        if value is None:
+        if amount is None:
             await ctx.respond(f'Current volume: {player.volume}% :speaker:')
             return
 
-        try:
-            if value not in range(0, 100 + 1):
-                raise Exception('')
+        if player.set_volume(amount):
+            await ctx.respond(f'Volume set to {amount}% :loud_sound:')
+        else:
+            await ctx.respond('Failed to change volume.')
 
-            if player.set_volume(value):
-                await ctx.respond(f'Volume set to {value}% :loud_sound:')
-            else:
-                await ctx.respond('Failed to change volume.')
-        except:
-            await ctx.respond('Error: Volume must be a number 1-100')
+    @music.command(
+        name = 'command_channel',
+        description = 'Set the only channel in where the commands are allowed to be called.'
+    )
+    @discord.commands.option(
+        name = 'channel',
+        description = 'Text channel to call music commands on. Empty to set anywhere.',
+        input_type = discord.TextChannel,
+        required = False
+    )
+    async def __command_channel(self, ctx: ApplicationContext, channel: discord.TextChannel):
+        settings = self.__get_guild_settings(ctx)
+
+        if channel is None:
+            settings.set_command_channel()
+
+            await ctx.respond('Music commands are now can be used in anywhere.')
+            return
+
+        settings.set_command_channel(channel.id)
+        await ctx.respond(f'Now you can use music command only in #{channel.name}')
+
+    def __get_guild_settings(self, guild: discord.Guild) -> MusicSettings:
+        return self.bot.settings.get_settings(guild)
 
 def setup(bot):
     bot.add_cog(MusicCog(bot))

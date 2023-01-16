@@ -148,7 +148,9 @@ class Player():
             return False
 
         self.volume = volume
-        self.guild.voice_client.source.volume = float(self.volume) / 100.0
+        if self.guild.voice_client is not None:
+            self.guild.voice_client.source.volume = float(volume) / 100.0
+ 
         self.settings.set_volume(volume)
 
         self.logger.info(f'Player volume has been set to {volume}')
