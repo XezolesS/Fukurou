@@ -1,6 +1,7 @@
 # pylint: disable = C0114, W0238, W0702
 import discord
 from discord import ApplicationContext
+from discord.commands import SlashCommandGroup
 from discord.ext import commands
 
 from fukurou.config import config
@@ -14,12 +15,20 @@ class MusicCog(commands.Cog):
     A collection of the commands related to music playback.
 
     Attributes:
-        bot: The instance of the bot that is executing the commands.
+        bot: The instance of the bot that is executing the music.
     '''
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.slash_command(name = 'play', description = config.HELP_YT_SHORT)
+    music = SlashCommandGroup(
+        name = 'music',
+        description = 'Commands about playing music!'
+    )
+
+    @music.command(
+        name = 'play',
+        description = config.HELP_YT_SHORT
+    )
     async def __play(self, ctx: ApplicationContext, *, track: str):
         player = self.bot.players[ctx.guild.id]
 
@@ -47,7 +56,10 @@ class MusicCog(commands.Cog):
         elif music.origin == Origin.Playlist:
             await ctx.respond(config.SONGINFO_PLAYLIST_QUEUED)
 
-    @commands.slash_command(name = 'stop', description = config.HELP_STOP_SHORT)
+    @music.command(
+        name = 'stop',
+        description = config.HELP_STOP_SHORT
+    )
     async def __stop(self, ctx: ApplicationContext):
         player = self.bot.players[ctx.guild.id]
 
@@ -57,7 +69,10 @@ class MusicCog(commands.Cog):
         player.stop()
         await ctx.respond('Stopped all sessions :octagonal_sign:')
 
-    @commands.slash_command(name = 'pause', description = config.HELP_PAUSE_SHORT)
+    @music.command(
+        name = 'pause',
+        description = config.HELP_PAUSE_SHORT
+    )
     async def __pause(self, ctx: ApplicationContext):
         player = self.bot.players[ctx.guild.id]
 
@@ -68,7 +83,10 @@ class MusicCog(commands.Cog):
         player.pause()
         await ctx.respond('Playback Paused :pause_button:')
 
-    @commands.slash_command(name = 'resume', description = config.HELP_RESUME_SHORT)
+    @music.command(
+        name = 'resume',
+        description = config.HELP_RESUME_SHORT
+    )
     async def __resume(self, ctx: ApplicationContext):
         player = self.bot.players[ctx.guild.id]
 
@@ -79,7 +97,10 @@ class MusicCog(commands.Cog):
         player.resume()
         await ctx.respond('Resumed playback :arrow_forward:')
 
-    @commands.slash_command(name = 'skip', description = config.HELP_SKIP_SHORT)
+    @music.command(
+        name = 'skip',
+        description = config.HELP_SKIP_SHORT
+    )
     async def __skip(self, ctx: ApplicationContext):
         player = self.bot.players[ctx.guild.id]
 
@@ -90,7 +111,10 @@ class MusicCog(commands.Cog):
         player.skip()
         await ctx.respond('Skipped current song :fast_forward:')
 
-    @commands.slash_command(name = 'previous', description = config.HELP_PREV_SHORT)
+    @music.command(
+        name = 'previous',
+        description = config.HELP_PREV_SHORT
+    )
     async def __previous(self, ctx: ApplicationContext):
         player = self.bot.players[ctx.guild.id]
 
@@ -101,7 +125,10 @@ class MusicCog(commands.Cog):
         player.previous()
         await ctx.respond('Playing previous song :track_previous:')
 
-    @commands.slash_command(name = 'nowplaying', description = config.HELP_SONGINFO_SHORT)
+    @music.command(
+        name = 'nowplaying',
+        description = config.HELP_SONGINFO_SHORT
+    )
     async def _nowplaying(self, ctx: ApplicationContext):
         player = self.bot.players[ctx.guild.id]
 
@@ -113,7 +140,10 @@ class MusicCog(commands.Cog):
 
         await ctx.respond(embed = playing.format_output(config.SONGINFO_SONGINFO))
 
-    @commands.slash_command(name = 'queue', description = config.HELP_QUEUE_SHORT)
+    @music.command(
+        name = 'queue',
+        description = config.HELP_QUEUE_SHORT
+    )
     async def __queue(self, ctx: ApplicationContext):
         player = self.bot.players[ctx.guild.id]
 
@@ -146,7 +176,10 @@ class MusicCog(commands.Cog):
 
         await ctx.respond(embed = embed)
 
-    @commands.slash_command(name = 'history', description = config.HELP_HISTORY_SHORT)
+    @music.command(
+        name = 'history',
+        description = config.HELP_HISTORY_SHORT
+    )
     async def __history(self, ctx: ApplicationContext):
         player = self.bot.players[ctx.guild.id]
 
@@ -179,7 +212,10 @@ class MusicCog(commands.Cog):
 
         await ctx.respond(embed = embed)
 
-    @commands.slash_command(name = 'loop', description = config.HELP_LOOP_SHORT)
+    @music.command(
+        name = 'loop',
+        description = config.HELP_LOOP_SHORT
+    )
     async def __loop(self, ctx: ApplicationContext):
         player = self.bot.players[ctx.guild.id]
 
@@ -189,7 +225,10 @@ class MusicCog(commands.Cog):
         else:
             await ctx.respond('Loop disabled :x:')
 
-    @commands.slash_command(name = 'shuffle', description = config.HELP_SHUFFLE_SHORT)
+    @music.command(
+        name = 'shuffle',
+        description = config.HELP_SHUFFLE_SHORT
+    )
     async def __shuffle(self, ctx: ApplicationContext):
         player = self.bot.players[ctx.guild.id]
 
@@ -200,7 +239,10 @@ class MusicCog(commands.Cog):
         player.playlist.shuffle()
         await ctx.respond('Shuffled queue :twisted_rightwards_arrows:')
 
-    @commands.slash_command(name = 'volume', description = config.HELP_VOL_SHORT)
+    @music.command(
+        name = 'volume',
+        description = config.HELP_VOL_SHORT
+    )
     @discord.commands.option(name = 'volume', type=int)
     async def __volume(self, ctx: ApplicationContext, value: int = None):
         player = self.bot.players[ctx.guild.id]
