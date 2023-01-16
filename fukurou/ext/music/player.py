@@ -27,7 +27,7 @@ class Player():
 
         self.timer = Timer(self.handler_timeout)
         self.logger = self.bot.loggers.get_logger(guild)
-        self.settings = bot.settings.get_settings(guild, 'Music')
+        self.settings = bot.settings.get_settings(guild)
 
         self.playlist = Playlist()
         self.current_track = None

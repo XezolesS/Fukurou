@@ -14,15 +14,15 @@ SETTINGS_PATH = os.path.join(os.path.realpath(os.path.curdir), SETTINGS_FOLDER_N
 
 class Settings():
     '''
-        Base settings class for extensions.
+    Base settings class for extensions.
 
-        Attributes:
-            name (str): Name of the extension.
+    Attributes:
+        name (str): Name of the extension.
     '''
 
-    def __init__(self, guild: Guild, name: str) -> None:
+    def __init__(self, guild: Guild, name: str = None) -> None:
         self.guild = guild
-        self.name = name
+        self.name = type(self).__name__.lower().replace('settings', '') if name is None else name
         self.settings = {}
 
     def set(self, key: str, value: object) -> None:
@@ -63,8 +63,13 @@ class Settings():
         with open(file = self.__get_path(), mode = 'w', encoding = 'utf-8') as file:
             file.write(json.dumps(data, indent = 4))
 
-    def read(self) -> None:
-        '''Read guild settings from the file.'''
+    def read(self) -> int:
+        '''
+        Read guild settings from the file.
+
+        Returns:
+            (int) Settings count.
+        '''
         if self.exists() is False:
             print('SETTINGS: No guild settings file found.')
             return
@@ -73,7 +78,14 @@ class Settings():
         with open(file = self.__get_path(), mode = 'r', encoding = 'utf-8') as file:
             data = json.loads(file.read())
 
-        self.settings = data[self.name]
+        settings = data[self.name]      # Settings read
+
+        # Override to current settings.
+        for setting in self.settings:
+            if setting in settings:
+                self.settings[setting] = settings[setting]
+
+        return len(settings)
 
     def reload(self) -> None:
         '''
@@ -100,7 +112,7 @@ class Settings():
 
 class GuildSettings():
     '''
-        Settings for each registered guild.
+    Settings for each registered guild.
     '''
 
     def __init__(self) -> None:
@@ -121,22 +133,35 @@ class GuildSettings():
         if guild is None:
             return
 
-        self.settings.append(music.MusicSettings(guild = guild, name = 'Music'))
+        # Search all classes that inherit Settings class and load it.
+        for child in Settings.__subclasses__():
+            sett_toload = child(guild = guild)
 
-        for sett in self.settings:
-            # Write a guild file if it's not exist or force_init is enabled.
-            if sett.exists() is False or force_init is True:
-                sett.write()
+            if sett_toload not in self.settings:
+                # Write a guild file if it's not exist or force_init is enabled.
+                if not sett_toload.exists() or force_init is True:
+                    sett_toload.reload()
+                else:
+                    sett_total = len(sett_toload.settings)
+                    sett_count = sett_toload.read()
 
-            sett.read()
+                    # If the number of settings in the guild file
+                    # is not equals to the number of base settings,
+                    # write it over new settings.
+                    if sett_count != sett_total:
+                        sett_toload.reload()
+
+                self.settings.append(sett_toload)
+
+                print(f'Settings "{type(sett_toload).__name__}" loaded as "{sett_toload.name}" for guild {guild.name}')
 
     def add_settings(self, guild: Guild) -> None:
         '''Add settings for the guild.'''
         self.init_settings(guild)
 
-    def get_settings(self, guild: Guild, name: str) -> None | Settings:
+    def get_settings(self, guild: Guild) -> None | Settings:
         for setting in self.settings:
-            if setting.name == name:
+            if setting.guild == guild:
                 return setting
 
         return None
