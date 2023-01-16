@@ -6,7 +6,7 @@ from fukurou.setting import Settings
 ST_VOLUME = 'voice_volume'
 ST_VOLUME_VAL = 100
 ST_COMMAND_CHANNEL = 'command_channel'
-ST_COMMAND_CHANNEL_VAL = 'any'
+ST_COMMAND_CHANNEL_VAL = -1
 
 class MusicSettings(Settings):
     '''Music Settings'''
@@ -24,16 +24,20 @@ class MusicSettings(Settings):
     def get_volume(self) -> int:
         return self.get(key = ST_VOLUME)
 
-    def set_command_channel(self, channel_id: (None | int) = ST_COMMAND_CHANNEL_VAL) -> None:
+    def set_command_channel(self, channel_id: int = ST_COMMAND_CHANNEL_VAL) -> None:
         '''
         Set the only channel in where the commands are allowed to be called.\n
-        If it's none(any, not int), commands can be executed in anywhere.
+        If it's none(-1), commands can be executed in anywhere.
         '''
         self.set(key = ST_COMMAND_CHANNEL, value = channel_id)
 
-    def get_command_channel(self) -> (None | int):
+    def get_command_channel(self) -> int:
         '''
         Get the only channel in where the commands are allowed to be called.\n
-        If it's none(any, not int), commands can be executed in anywhere.
+        If it's none(-1), commands can be executed in anywhere.
         '''
-        return self.get(key = ST_COMMAND_CHANNEL)
+        value = self.get(key = ST_COMMAND_CHANNEL)
+        if not isinstance(value, int):
+            return -1
+
+        return value

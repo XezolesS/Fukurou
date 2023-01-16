@@ -1,6 +1,10 @@
 # pylint: disable = C0114, W0238, W0702
 import discord
-from discord import ApplicationContext
+from discord import (
+    ApplicationContext,
+    ApplicationCommandError,
+    Guild
+)
 from discord.commands import SlashCommandGroup
 from discord.ext import commands
 
@@ -22,7 +26,7 @@ class MusicCog(commands.Cog):
     '''
     def __init__(self, bot):
         self.bot = bot
-        self.channel_id = None
+        self.channel_id = {}
 
     music = SlashCommandGroup(
         name = 'music',
@@ -34,18 +38,22 @@ class MusicCog(commands.Cog):
     #    description = 'Configs about music.'
     # )
 
-    @commands.Cog.listener()
-    async def on_application_command(self, ctx: ApplicationContext):
-        settings = self.__get_guild_settings(ctx.guild)
-        music_channel_id = settings.get_command_channel()
-        if music_channel_id is None:
-            self.channel_id = None
+    def cog_check(self, ctx: ApplicationContext):
+        # Check command channel
+        self.__register_guild_command_channel(ctx.guild)
 
-        if music_channel_id == ctx.channel_id:
-            self.channel_id = music_channel_id
-            await ctx.respond(ctx.channel.name)
+        if self.channel_id[ctx.guild.id] == -1:
+            return True
 
-        self.channel_id = None
+        return self.channel_id[ctx.guild.id] == ctx.channel.id
+
+    async def cog_command_error(self, ctx: ApplicationContext, error: ApplicationCommandError):
+        if self.channel_id[ctx.guild.id] != ctx.channel.id:
+            await ctx.respond('You cannot use music commands in this channel!\n' +
+                              f'Try it on <#{self.channel_id[ctx.guild.id]}>', ephemeral = True)
+            return
+
+        await ctx.respond(error, ephemeral = True)
 
     @music.command(
         name = 'play',
@@ -303,19 +311,28 @@ class MusicCog(commands.Cog):
         required = False
     )
     async def __command_channel(self, ctx: ApplicationContext, channel: discord.TextChannel):
-        settings = self.__get_guild_settings(ctx)
+        settings = self.__get_guild_settings(ctx.guild)
 
         if channel is None:
             settings.set_command_channel()
+            self.__register_guild_command_channel(ctx.guild, reload = True)
 
             await ctx.respond('Music commands are now can be used in anywhere.')
             return
 
         settings.set_command_channel(channel.id)
+        self.__register_guild_command_channel(ctx.guild, reload = True)
+
         await ctx.respond(f'Now you can use music command only in #{channel.name}')
 
-    def __get_guild_settings(self, guild: discord.Guild) -> MusicSettings:
+    def __get_guild_settings(self, guild: Guild) -> MusicSettings:
         return self.bot.settings.get_settings(guild)
+
+    def __register_guild_command_channel(self, guild: Guild, reload: bool = False) -> None:
+        settings = self.__get_guild_settings(guild)
+
+        if reload is True or guild.id not in self.channel_id:
+            self.channel_id[guild.id] = settings.get_command_channel()
 
 def setup(bot):
     bot.add_cog(MusicCog(bot))
