@@ -32,6 +32,13 @@ class MusicCog(commands.Cog):
     async def __play(self, ctx: ApplicationContext, *, track: str):
         player = self.bot.players[ctx.guild.id]
 
+        # Check if the author is currently in the channel.
+        if ctx.author.voice is None:
+            await ctx.respond('You are not in the voice channel!')
+            return
+
+        # Check if the bot is not connected to author's channel.
+        # If it's not, try to join to the channel.
         if not player.is_connected(ctx.author.voice.channel):
             if await player.connect(ctx) is False:
                 return

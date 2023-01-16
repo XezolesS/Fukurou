@@ -160,6 +160,8 @@ class Player():
         if self.guild.voice_client is None:
             return False
 
+        # When the bot is connected to any channel
+        # and the channel is specified as none, return True.
         if channel is None:
             return True
 
