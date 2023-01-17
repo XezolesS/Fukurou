@@ -5,7 +5,6 @@ from discord import (
     ApplicationCommandError,
     Guild
 )
-from discord.commands import SlashCommandGroup
 from discord.ext import commands
 
 from fukurou.config import config
@@ -28,9 +27,9 @@ class MusicCog(commands.Cog):
         self.bot = bot
         self.channel_id = {}
 
-    music = SlashCommandGroup(
+    music = discord.SlashCommandGroup(
         name = 'music',
-        description = 'Commands about playing music!'
+        description = 'Commands about playing music!',
     )
 
     # configs = music.create_subgroup(
@@ -39,20 +38,31 @@ class MusicCog(commands.Cog):
     # )
 
     def cog_check(self, ctx: ApplicationContext):
-        # Check command channel
-        self.__register_guild_command_channel(ctx.guild)
+        # Guild only
+        def predicate_guild_only(ctx: ApplicationContext):
+            if ctx.guild is None:
+                raise commands.CheckFailure("You can't use this command in DM!")
 
-        if self.channel_id[ctx.guild.id] == -1:
             return True
 
-        return self.channel_id[ctx.guild.id] == ctx.channel.id
+        # Check command channel
+        def predicate_command_channel(ctx: ApplicationContext):
+            self.__register_guild_command_channel(ctx.guild)
+
+            # Allow all channel
+            if self.channel_id[ctx.guild.id] == -1:
+                return True
+
+            # Check if it's music channel
+            if self.channel_id[ctx.guild.id] != ctx.channel.id:
+                raise commands.CheckFailure('You cannot use music commands in this channel!\n' +
+                                           f'Try it on <#{self.channel_id[ctx.guild.id]}>')
+
+            return True
+
+        return predicate_guild_only(ctx) and predicate_command_channel(ctx)
 
     async def cog_command_error(self, ctx: ApplicationContext, error: ApplicationCommandError):
-        if self.channel_id[ctx.guild.id] != ctx.channel.id:
-            await ctx.respond('You cannot use music commands in this channel!\n' +
-                              f'Try it on <#{self.channel_id[ctx.guild.id]}>', ephemeral = True)
-            return
-
         await ctx.respond(error, ephemeral = True)
 
     @music.command(
@@ -310,6 +320,7 @@ class MusicCog(commands.Cog):
         input_type = discord.TextChannel,
         required = False
     )
+    @commands.has_permissions(manage_channels = True)
     async def __command_channel(self, ctx: ApplicationContext, channel: discord.TextChannel):
         settings = self.__get_guild_settings(ctx.guild)
 
