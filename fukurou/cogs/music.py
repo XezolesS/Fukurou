@@ -30,6 +30,7 @@ class MusicCog(commands.Cog):
     music = discord.SlashCommandGroup(
         name = 'music',
         description = 'Commands about playing music!',
+        guild_only = True
     )
 
     # configs = music.create_subgroup(
@@ -37,16 +38,9 @@ class MusicCog(commands.Cog):
     #    description = 'Configs about music.'
     # )
 
-    def cog_check(self, ctx: ApplicationContext):
-        # Guild only
-        def predicate_guild_only(ctx: ApplicationContext):
-            if ctx.guild is None:
-                raise commands.CheckFailure("You can't use this command in DM!")
-
-            return True
-
+    def cog_check(self, ctx: ApplicationContext) -> None:
         # Check command channel
-        def predicate_command_channel(ctx: ApplicationContext):
+        def predicate_command_channel(ctx: ApplicationContext) -> bool:
             self.__register_guild_command_channel(ctx.guild)
 
             # Allow all channel
@@ -60,16 +54,76 @@ class MusicCog(commands.Cog):
 
             return True
 
-        return predicate_guild_only(ctx) and predicate_command_channel(ctx)
+        return (
+            super().cog_check(ctx) and
+            predicate_command_channel(ctx)
+        )
 
-    async def cog_command_error(self, ctx: ApplicationContext, error: ApplicationCommandError):
+    async def cog_command_error(self, ctx: ApplicationContext, error: ApplicationCommandError) -> None:
         await ctx.respond(error, ephemeral = True)
+
+    @commands.slash_command(
+        name = 'connect',
+        description = config.HELP_CONNECT_SHORT,
+        guild_only = True
+    )
+    async def __connect(self, ctx: ApplicationContext):
+        player = self.bot.players[ctx.guild.id]
+
+        # Client connected check
+        if ctx.author.voice is None:
+            raise commands.CheckFailure("You're not in the voice channel!")
+
+        await player.connect(ctx)
+        await ctx.respond(f'Connected to {ctx.voice_client.channel}')
+
+    @commands.slash_command(
+        name = 'disconnect',
+        description = config.HELP_DISCONNECT_SHORT,
+        guild_only = True
+    )
+    async def __disconnect(self, ctx: ApplicationContext):
+        player = self.bot.players[ctx.guild.id]
+
+        # Not connected check
+        if not player.is_connected():
+            raise commands.CheckFailure("I'm not in the voice channel now!")
+
+        connected_channel = ctx.voice_client.channel
+
+        await player.disconnect()
+        await ctx.respond(f'Disconnected from {connected_channel}')
+
+    @commands.slash_command(
+        name = 'switch',
+        description = config.HELP_CHANGECHANNEL_SHORT,
+        guild_only = True
+    )
+    async def __switch(self, ctx: ApplicationContext):
+        player = self.bot.players[ctx.guild.id]
+
+        # Client connected check
+        if ctx.author.voice is None:
+            raise commands.CheckFailure("You're not in the voice channel!")
+
+        # If not connected, connect to the channel.
+        if not player.is_connected():
+            await player.connect(ctx)
+            await ctx.respond(f'Connected to {ctx.voice_client.channel}')
+            return
+
+        # Channel not changed check
+        if player.guild.voice_client.channel == ctx.author.voice.channel:
+            raise commands.CheckFailure(f'Already connected to {player.guild.voice_client.channel}')
+
+        await player.reconnect(ctx)
+        await ctx.respond(f':white_check_mark: Switched to {ctx.voice_client.channel}')
 
     @music.command(
         name = 'play',
         description = config.HELP_YT_SHORT
     )
-    async def __play(self, ctx: ApplicationContext, *, track: str):
+    async def __play(self, ctx: ApplicationContext, *, track: str) -> None:
         player = self.bot.players[ctx.guild.id]
 
         # Check if the author is currently in the channel.
@@ -107,7 +161,7 @@ class MusicCog(commands.Cog):
         name = 'stop',
         description = config.HELP_STOP_SHORT
     )
-    async def __stop(self, ctx: ApplicationContext):
+    async def __stop(self, ctx: ApplicationContext) -> None:
         player = self.bot.players[ctx.guild.id]
 
         if not player.is_playing():
@@ -120,7 +174,7 @@ class MusicCog(commands.Cog):
         name = 'pause',
         description = config.HELP_PAUSE_SHORT
     )
-    async def __pause(self, ctx: ApplicationContext):
+    async def __pause(self, ctx: ApplicationContext) -> None:
         player = self.bot.players[ctx.guild.id]
 
         if not player.is_playing():
@@ -134,7 +188,7 @@ class MusicCog(commands.Cog):
         name = 'resume',
         description = config.HELP_RESUME_SHORT
     )
-    async def __resume(self, ctx: ApplicationContext):
+    async def __resume(self, ctx: ApplicationContext) -> None:
         player = self.bot.players[ctx.guild.id]
 
         if not player.is_paused():
@@ -148,7 +202,7 @@ class MusicCog(commands.Cog):
         name = 'skip',
         description = config.HELP_SKIP_SHORT
     )
-    async def __skip(self, ctx: ApplicationContext):
+    async def __skip(self, ctx: ApplicationContext) -> None:
         player = self.bot.players[ctx.guild.id]
 
         if not player.is_playing():
@@ -162,7 +216,7 @@ class MusicCog(commands.Cog):
         name = 'previous',
         description = config.HELP_PREV_SHORT
     )
-    async def __previous(self, ctx: ApplicationContext):
+    async def __previous(self, ctx: ApplicationContext) -> None:
         player = self.bot.players[ctx.guild.id]
 
         if not player.is_playing():
@@ -176,7 +230,7 @@ class MusicCog(commands.Cog):
         name = 'nowplaying',
         description = config.HELP_SONGINFO_SHORT
     )
-    async def _nowplaying(self, ctx: ApplicationContext):
+    async def __nowplaying(self, ctx: ApplicationContext) -> None:
         player = self.bot.players[ctx.guild.id]
 
         if not player.is_playing():
@@ -191,7 +245,7 @@ class MusicCog(commands.Cog):
         name = 'queue',
         description = config.HELP_QUEUE_SHORT
     )
-    async def __queue(self, ctx: ApplicationContext):
+    async def __queue(self, ctx: ApplicationContext) -> None:
         player = self.bot.players[ctx.guild.id]
 
         if player.playlist.is_empty():
@@ -227,7 +281,7 @@ class MusicCog(commands.Cog):
         name = 'history',
         description = config.HELP_HISTORY_SHORT
     )
-    async def __history(self, ctx: ApplicationContext):
+    async def __history(self, ctx: ApplicationContext) -> None:
         player = self.bot.players[ctx.guild.id]
 
         if player.playlist.is_history_empty():
@@ -263,7 +317,7 @@ class MusicCog(commands.Cog):
         name = 'loop',
         description = config.HELP_LOOP_SHORT
     )
-    async def __loop(self, ctx: ApplicationContext):
+    async def __loop(self, ctx: ApplicationContext) -> None:
         player = self.bot.players[ctx.guild.id]
 
         toggled = player.toggle_loop()
@@ -276,7 +330,7 @@ class MusicCog(commands.Cog):
         name = 'shuffle',
         description = config.HELP_SHUFFLE_SHORT
     )
-    async def __shuffle(self, ctx: ApplicationContext):
+    async def __shuffle(self, ctx: ApplicationContext) -> None:
         player = self.bot.players[ctx.guild.id]
 
         if player.playlist.is_empty():
@@ -288,17 +342,19 @@ class MusicCog(commands.Cog):
 
     @music.command(
         name = 'volume',
-        description = config.HELP_VOL_SHORT
+        description = config.HELP_VOL_SHORT,
+        options = [
+            discord.Option(
+                int,
+                name = 'amount',
+                description = 'Set the volume in % (100 to 0)',
+                min_value = 0,
+                max_value = 100,
+                required = False
+            )
+        ]
     )
-    @discord.commands.option(
-        name = 'amount',
-        description = 'Set the volume in % (100 to 0)',
-        input_type = int,
-        min_value = 0,
-        max_value = 100,
-        required = False
-    )
-    async def __volume(self, ctx: ApplicationContext, amount: int):
+    async def __volume(self, ctx: ApplicationContext, amount: int) -> None:
         player = self.bot.players[ctx.guild.id]
 
         if amount is None:
@@ -312,16 +368,19 @@ class MusicCog(commands.Cog):
 
     @music.command(
         name = 'command_channel',
-        description = 'Set the only channel in where the commands are allowed to be called.'
+        description = 'Set the only channel in where the commands are allowed to be called.',
+        options = [
+            discord.Option(
+                discord.TextChannel,
+                name = 'channel',
+                description = 'Text channel to call music commands on. Empty to set anywhere.',
+                required = False
+            )
+        ],
+        default_member_permissions = discord.Permissions(manage_channels = True)
     )
-    @discord.commands.option(
-        name = 'channel',
-        description = 'Text channel to call music commands on. Empty to set anywhere.',
-        input_type = discord.TextChannel,
-        required = False
-    )
-    @commands.has_permissions(manage_channels = True)
-    async def __command_channel(self, ctx: ApplicationContext, channel: discord.TextChannel):
+    # @commands.has_permissions(manage_channels = True)
+    async def __command_channel(self, ctx: ApplicationContext, channel: discord.TextChannel) -> None:
         settings = self.__get_guild_settings(ctx.guild)
 
         if channel is None:

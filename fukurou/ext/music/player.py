@@ -51,10 +51,18 @@ class Player():
 
     async def disconnect(self):
         '''Disconnect from assigned voice channel.'''
+        if self.guild.voice_client is None:
+            return
+
         self.stop()
 
         self.logger.info(f'Disconnected from voice channel {self.guild.voice_client.channel}')
         await self.guild.voice_client.disconnect(force = True)
+
+    async def reconnect(self, ctx: ApplicationContext):
+        '''Reconnect to the voice channel.'''
+        await self.disconnect()
+        await self.connect(ctx)
 
     async def play(self):
         '''Plays the first track of the playlist if one available.'''
