@@ -117,6 +117,59 @@ class MusicCog(commands.Cog):
         await ctx.respond(f':white_check_mark: Switched to {ctx.voice_client.channel}')
 
     @music_commands.command(
+        name = 'player',
+        description = 'Opens music player.',
+    )
+    async def __player(self, ctx: ApplicationContext):
+        player = self.bot.players[ctx.guild.id]
+
+        class PlayerView(discord.ui.View):
+            @discord.ui.button(
+                style = discord.ButtonStyle.gray,
+                label = 'Prev',
+                emoji = '\N{Black Left-Pointing Double Triangle with Vertical Bar}'
+            )
+            async def __button_previous(self, button: discord.ui.Button, interaction: discord.Interaction):
+                await interaction.response.defer()
+                await ctx.invoke(self.__get_command('music previous'))
+
+            @discord.ui.button(
+                style = discord.ButtonStyle.red,
+                label = 'Stop',
+                emoji = '\N{Black Square for Stop}'
+            )
+            async def __button_stop(self, button: discord.ui.Button, interaction: discord.Interaction):
+                await interaction.response.defer()
+                await ctx.invoke(self.__get_command('music stop'))
+
+            @discord.ui.button(
+                style = discord.ButtonStyle.gray,
+                label = 'Pause',
+                emoji = '\N{Double Vertical Bar}'
+            )
+            async def __button_pause(self, button: discord.ui.Button, interaction: discord.Interaction):
+                await interaction.response.defer()
+                await ctx.invoke(self.__get_command('music pause'))
+
+            @discord.ui.button(
+                style = discord.ButtonStyle.gray,
+                label = 'Next',
+                emoji = '\N{Black Right-Pointing Double Triangle with Vertical Bar}'
+            )
+            async def __button_next(self, button: discord.ui.Button, interaction: discord.Interaction):
+                await interaction.response.defer()
+                await ctx.invoke(self.__get_command('music skip'))
+
+            def __get_command(self, name: str):
+                for cmd in ctx.bot.get_cog('MusicCog').walk_commands():
+                    if cmd.qualified_name == name:
+                        return cmd
+                
+                return None
+
+        await ctx.respond(view = PlayerView())
+
+    @music_commands.command(
         name = 'play',
         description = config.HELP_YT_SHORT,
         options = [
