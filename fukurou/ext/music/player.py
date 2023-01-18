@@ -68,12 +68,17 @@ class Player():
         '''Plays the first track of the playlist if one available.'''
         if len(self.playlist) == 0:
             self.logger.info('All track have been played.')
-            return None
+            return
 
+        # Get the next track
         self.current_track = self.playlist.next()
-        self.logger.info(f'Playing track {self.current_track.title}...')
 
-        # Play the track
+        # Track null check
+        if self.current_track is None:
+            return
+
+        # Download the track
+        await self.current_track.load()
         source = discord.FFmpegPCMAudio(
             self.current_track.url,
             before_options = '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5')
@@ -82,6 +87,8 @@ class Player():
             self.guild.voice_client.source
         )
         self.guild.voice_client.source.volume = float(self.volume) / 100.0
+
+        self.logger.info(f'Playing track {self.current_track.title}...')
 
         # Reset the timer
         self.timer.reset()
@@ -158,7 +165,7 @@ class Player():
         self.volume = volume
         if self.guild.voice_client is not None:
             self.guild.voice_client.source.volume = float(volume) / 100.0
- 
+
         self.settings.set_volume(volume)
 
         self.logger.info(f'Player volume has been set to {volume}')

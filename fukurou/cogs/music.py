@@ -8,12 +8,9 @@ from discord import (
 from discord.ext import commands
 
 from fukurou.config import config
-from fukurou.enums import (
-    Origin
-)
 from fukurou.ext.music import (
     MusicSettings,
-    get_music
+    to_musiclist
 )
 
 class MusicCog(commands.Cog):
@@ -27,7 +24,7 @@ class MusicCog(commands.Cog):
         self.bot = bot
         self.channel_id = {}
 
-    music = discord.SlashCommandGroup(
+    music_commands = discord.SlashCommandGroup(
         name = 'music',
         description = 'Commands about playing music!',
         guild_only = True
@@ -106,11 +103,11 @@ class MusicCog(commands.Cog):
         if ctx.author.voice is None:
             raise commands.CheckFailure("You're not in the voice channel!")
 
+        # Not connected check
         # If not connected, connect to the channel.
         if not player.is_connected():
-            await player.connect(ctx)
-            await ctx.respond(f'Connected to {ctx.voice_client.channel}')
-            return
+            if await player.connect(ctx) is False:
+                raise commands.CheckFailure('Cannot connected to voice channel.')
 
         # Channel not changed check
         if player.guild.voice_client.channel == ctx.author.voice.channel:
@@ -119,45 +116,55 @@ class MusicCog(commands.Cog):
         await player.reconnect(ctx)
         await ctx.respond(f':white_check_mark: Switched to {ctx.voice_client.channel}')
 
-    @music.command(
+    @music_commands.command(
         name = 'play',
-        description = config.HELP_YT_SHORT
+        description = config.HELP_YT_SHORT,
+        options = [
+            discord.Option(
+                str,
+                name = 'track',
+                description = 'Search keyword or URL of the song to play',
+                required = True
+            )
+        ]
     )
     async def __play(self, ctx: ApplicationContext, *, track: str) -> None:
         player = self.bot.players[ctx.guild.id]
 
-        # Check if the author is currently in the channel.
+        # Client connected check
         if ctx.author.voice is None:
-            await ctx.message('You are not in the voice channel!')
-            return
+            raise commands.CheckFailure("You're not in the voice channel!")
 
-        # Check if the bot is not connected to author's channel.
-        # If it's not, try to join to the channel.
+        # Not connected check
+        # If not connected, connect to the channel.
         if not player.is_connected(ctx.author.voice.channel):
             if await player.connect(ctx) is False:
-                return
+                raise commands.CheckFailure('Cannot connected to voice channel.')
 
-        if track.isspace() or not track:
-            return
+        # Response setup
+        await ctx.response.defer()
+        message = await ctx.followup.send('Loading...')
 
-        music = get_music(track)
+        # Resolve links to list of musics.
+        musics = await to_musiclist(track)
 
-        if music is None:
-            await ctx.respond(config.SONGINFO_ERROR)
-            return
+        # Unknown music check
+        if musics is None or len(musics) == 0:
+            raise commands.CheckFailure(config.SONGINFO_ERROR)
 
-        if music.origin == Origin.Default:
+        for music in musics:
             player.add_track(music)
 
-            if not player.is_playing():
-                await player.play()
-                await ctx.respond(embed = music.to_embed(config.SONGINFO_NOW_PLAYING))
-            else:
-                await ctx.respond(embed = music.to_embed(config.SONGINFO_QUEUE_ADDED))
-        elif music.origin == Origin.Playlist:
-            await ctx.respond(config.SONGINFO_PLAYLIST_QUEUED)
+        if not player.is_playing():
+            await player.play()
 
-    @music.command(
+        await ctx.followup.edit_message(
+            message_id = message.id,
+            content = '',
+            embed = player.current_track.to_embed(f'{len(musics)} Music(s) are added to the queue!')
+        )
+
+    @music_commands.command(
         name = 'stop',
         description = config.HELP_STOP_SHORT
     )
@@ -170,7 +177,7 @@ class MusicCog(commands.Cog):
         player.stop()
         await ctx.respond('Stopped all sessions :octagonal_sign:')
 
-    @music.command(
+    @music_commands.command(
         name = 'pause',
         description = config.HELP_PAUSE_SHORT
     )
@@ -184,7 +191,7 @@ class MusicCog(commands.Cog):
         player.pause()
         await ctx.respond('Playback Paused :pause_button:')
 
-    @music.command(
+    @music_commands.command(
         name = 'resume',
         description = config.HELP_RESUME_SHORT
     )
@@ -198,7 +205,7 @@ class MusicCog(commands.Cog):
         player.resume()
         await ctx.respond('Resumed playback :arrow_forward:')
 
-    @music.command(
+    @music_commands.command(
         name = 'skip',
         description = config.HELP_SKIP_SHORT
     )
@@ -212,7 +219,7 @@ class MusicCog(commands.Cog):
         player.skip()
         await ctx.respond('Skipped current song :fast_forward:')
 
-    @music.command(
+    @music_commands.command(
         name = 'previous',
         description = config.HELP_PREV_SHORT
     )
@@ -226,7 +233,7 @@ class MusicCog(commands.Cog):
         player.previous()
         await ctx.respond('Playing previous song :track_previous:')
 
-    @music.command(
+    @music_commands.command(
         name = 'nowplaying',
         description = config.HELP_SONGINFO_SHORT
     )
@@ -239,9 +246,9 @@ class MusicCog(commands.Cog):
 
         playing = player.current_track
 
-        await ctx.respond(embed = playing.format_output(config.SONGINFO_SONGINFO))
+        await ctx.respond(embed = playing.to_embed(config.SONGINFO_SONGINFO))
 
-    @music.command(
+    @music_commands.command(
         name = 'queue',
         description = config.HELP_QUEUE_SHORT
     )
@@ -256,7 +263,7 @@ class MusicCog(commands.Cog):
         config.MAX_SONG_PRELOAD = min(config.MAX_SONG_PRELOAD, 25)
 
         embed = discord.Embed(
-            title = f':scroll: Queue [{player.playlist.queue}]',
+            title = f':scroll: Queue [{len(player.playlist.queue)}]',
             color = config.EMBED_COLOR
         )
 
@@ -277,7 +284,7 @@ class MusicCog(commands.Cog):
 
         await ctx.respond(embed = embed)
 
-    @music.command(
+    @music_commands.command(
         name = 'history',
         description = config.HELP_HISTORY_SHORT
     )
@@ -313,7 +320,7 @@ class MusicCog(commands.Cog):
 
         await ctx.respond(embed = embed)
 
-    @music.command(
+    @music_commands.command(
         name = 'loop',
         description = config.HELP_LOOP_SHORT
     )
@@ -326,7 +333,7 @@ class MusicCog(commands.Cog):
         else:
             await ctx.respond('Loop disabled :x:')
 
-    @music.command(
+    @music_commands.command(
         name = 'shuffle',
         description = config.HELP_SHUFFLE_SHORT
     )
@@ -340,7 +347,7 @@ class MusicCog(commands.Cog):
         player.playlist.shuffle()
         await ctx.respond('Shuffled queue :twisted_rightwards_arrows:')
 
-    @music.command(
+    @music_commands.command(
         name = 'volume',
         description = config.HELP_VOL_SHORT,
         options = [
@@ -366,7 +373,7 @@ class MusicCog(commands.Cog):
         else:
             await ctx.respond('Failed to change volume.')
 
-    @music.command(
+    @music_commands.command(
         name = 'command_channel',
         description = 'Set the only channel in where the commands are allowed to be called.',
         options = [

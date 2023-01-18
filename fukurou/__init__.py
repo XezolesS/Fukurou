@@ -6,7 +6,6 @@ __all__ = [
 
 import fukurou.cogs
 import fukurou.config
-import fukurou.enums
 import fukurou.ext.music
 
 import fukurou.fukurou

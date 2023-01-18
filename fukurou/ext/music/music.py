@@ -1,15 +1,9 @@
 # pylint: disable = C0114, R0902, R0913, W0703
 import datetime
-import re
 import discord
 import yt_dlp
 
 from fukurou.config import config
-from fukurou.enums import (
-    Origin,
-    Playlist,
-    Site
-)
 import fukurou.ext.music.url as u
 
 class Music():
@@ -17,32 +11,40 @@ class Music():
     A music object.
 
     Attributes:
-        origin (Origin): Represent if it's from playlist or not.
-        host (Site): The website where the music is.
-        uploader (str): Uploader who uploaded the music.
+        webpage_url (str): The webpage link of the music.
+
+    Optional Attributes:
         title (str): Title of the music.
+        uploader (str): Uploader who uploaded the music.
         duration (int): Total duration of the music.
-        url (str): The webpage link of the music.
-        webpage_url (str):
+        url (str): The content link of the music.
         thumbnail (str): The url of the thumbnail.
     '''
 
-    def __init__(self, origin: Origin, host: Site,
-                 uploader: str = None,
-                 title: str = None,
-                 duration: int = None,
-                 url: str = None,
-                 webpage_url: str = None,
-                 thumbnail: str = None):
-        self.origin = origin
-        self.host = host
-        self.uploader = uploader
-        self.title = title
-        self.duration = duration
-        self.url = url
+    def __init__(self, webpage_url: str, **kwargs):
         self.webpage_url = webpage_url
-        self.thumbnail = thumbnail
-        self.output = ""
+
+        if kwargs is not None:
+            self.title = kwargs.get('title')
+            self.uploader = kwargs.get('uploader')
+            self.duration = kwargs.get('duration')
+            self.url = kwargs.get('url')
+            self.thumbnail = kwargs.get('thumbnail')
+
+    async def load(self):
+        options = {
+            'format': 'bestaudio/best',
+            'extract_flat': True
+        }
+
+        with yt_dlp.YoutubeDL(options) as ytdlp:
+            info = ytdlp.extract_info(self.webpage_url, download = False)
+
+        self.title = info.get('title')
+        self.uploader = info.get('uploader')
+        self.duration = info.get('duration')
+        self.url = info.get('url')
+        self.thumbnail = info.get('thumbnails')[-1]['url']
 
     def to_embed(self, playtype):
         '''Convert music info to discord embed to display.'''

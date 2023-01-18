@@ -18,8 +18,6 @@ from .player import Player
 from .playlist import Playlist
 from .setting import MusicSettings
 from .url import (
-    to_playlist,
-    to_site,
-    get_music,
+    to_musiclist,
     is_url
 )
