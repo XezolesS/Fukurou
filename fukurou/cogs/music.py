@@ -5,11 +5,15 @@ from discord import (
     ApplicationCommandError,
     Guild
 )
-from discord.ext import commands
+from discord.ext import (
+    commands,
+    pages
+)
 
 from fukurou.config import config
 from fukurou.ext.music import (
     MusicSettings,
+    Music,
     to_musiclist
 )
 
@@ -115,59 +119,6 @@ class MusicCog(commands.Cog):
 
         await player.reconnect(ctx)
         await ctx.respond(f':white_check_mark: Switched to {ctx.voice_client.channel}')
-
-    @music_commands.command(
-        name = 'player',
-        description = 'Opens music player.',
-    )
-    async def __player(self, ctx: ApplicationContext):
-        player = self.bot.players[ctx.guild.id]
-
-        class PlayerView(discord.ui.View):
-            @discord.ui.button(
-                style = discord.ButtonStyle.gray,
-                label = 'Prev',
-                emoji = '\N{Black Left-Pointing Double Triangle with Vertical Bar}'
-            )
-            async def __button_previous(self, button: discord.ui.Button, interaction: discord.Interaction):
-                await interaction.response.defer()
-                await ctx.invoke(self.__get_command('music previous'))
-
-            @discord.ui.button(
-                style = discord.ButtonStyle.red,
-                label = 'Stop',
-                emoji = '\N{Black Square for Stop}'
-            )
-            async def __button_stop(self, button: discord.ui.Button, interaction: discord.Interaction):
-                await interaction.response.defer()
-                await ctx.invoke(self.__get_command('music stop'))
-
-            @discord.ui.button(
-                style = discord.ButtonStyle.gray,
-                label = 'Pause',
-                emoji = '\N{Double Vertical Bar}'
-            )
-            async def __button_pause(self, button: discord.ui.Button, interaction: discord.Interaction):
-                await interaction.response.defer()
-                await ctx.invoke(self.__get_command('music pause'))
-
-            @discord.ui.button(
-                style = discord.ButtonStyle.gray,
-                label = 'Next',
-                emoji = '\N{Black Right-Pointing Double Triangle with Vertical Bar}'
-            )
-            async def __button_next(self, button: discord.ui.Button, interaction: discord.Interaction):
-                await interaction.response.defer()
-                await ctx.invoke(self.__get_command('music skip'))
-
-            def __get_command(self, name: str):
-                for cmd in ctx.bot.get_cog('MusicCog').walk_commands():
-                    if cmd.qualified_name == name:
-                        return cmd
-                
-                return None
-
-        await ctx.respond(view = PlayerView())
 
     @music_commands.command(
         name = 'play',
@@ -312,30 +263,8 @@ class MusicCog(commands.Cog):
             await ctx.respond('Queue is empty :x:')
             return
 
-        # Embeds are limited to 25 fields
-        config.MAX_SONG_PRELOAD = min(config.MAX_SONG_PRELOAD, 25)
-
-        embed = discord.Embed(
-            title = f':scroll: Queue [{len(player.playlist.queue)}]',
-            color = config.EMBED_COLOR
-        )
-
-        playlist_list = list(player.playlist.queue)[:config.MAX_SONG_PRELOAD]
-        for counter, music in enumerate(playlist_list, start = 1):
-            if music.title is None:
-                embed.add_field(
-                    name = f'{counter}.',
-                    value = f'[{music.webpage_url}]({music.webpage_url})',
-                    inline = False
-                )
-            else:
-                embed.add_field(
-                    name = f'{counter}.',
-                    value = f'[{music.title}]({music.webpage_url})',
-                    inline = False
-                )
-
-        await ctx.respond(embed = embed)
+        playlist_page = PlaylistPage(playlist = player.playlist.queue, title = 'Queue')
+        await playlist_page.respond(ctx.interaction, ephemeral = True)
 
     @music_commands.command(
         name = 'history',
@@ -348,30 +277,8 @@ class MusicCog(commands.Cog):
             await ctx.respond('History is empty :x:')
             return
 
-        # Embeds are limited to 25 fields
-        config.MAX_HISTORY_LENGTH = min(config.MAX_HISTORY_LENGTH, 25)
-
-        embed = discord.Embed(
-            title = f':scroll: History [{player.playlist.history}]',
-            color=config.EMBED_COLOR
-        )
-
-        history_list = list(player.playlist.history)[:config.MAX_HISTORY_LENGTH]
-        for counter, music in enumerate(history_list, start = 1):
-            if music.title is None:
-                embed.add_field(
-                    name = f'{counter}.',
-                    value = f'[{music.webpage_url}]({music.webpage_url})',
-                    inline = False
-                )
-            else:
-                embed.add_field(
-                    name = f'{counter}.',
-                    value = '[{music.title}]({music.webpage_url})',
-                    inline = False
-                )
-
-        await ctx.respond(embed = embed)
+        playlist_page = PlaylistPage(playlist = player.playlist.history, title = 'History')
+        await playlist_page.respond(ctx.interaction, ephemeral = True)
 
     @music_commands.command(
         name = 'loop',
@@ -455,6 +362,13 @@ class MusicCog(commands.Cog):
 
         await ctx.respond(f'Now you can use music command only in #{channel.name}')
 
+    @music_commands.command(
+        name = 'player',
+        description = 'Opens music player.',
+    )
+    async def __player(self, ctx: ApplicationContext):
+        await ctx.respond(view = PlayerView(ctx = ctx))
+
     def __get_guild_settings(self, guild: Guild) -> MusicSettings:
         return self.bot.settings.get_settings(guild)
 
@@ -463,6 +377,106 @@ class MusicCog(commands.Cog):
 
         if reload is True or guild.id not in self.channel_id:
             self.channel_id[guild.id] = settings.get_command_channel()
+
+class PlayerView(discord.ui.View):
+    def __init__(self, *items: discord.ui.Item, ctx: ApplicationContext, timeout: float | None = 180, disable_on_timeout: bool = False):
+        super().__init__(*items, timeout = timeout, disable_on_timeout = disable_on_timeout)
+
+        self.context = ctx
+
+        # Command initialization
+        self.commands = {}
+
+        for cmd in self.context.bot.get_cog('MusicCog').walk_commands():
+            if 'music ' not in cmd.qualified_name:
+                continue
+
+            self.commands[cmd.name] = cmd
+
+    @discord.ui.button(
+        style = discord.ButtonStyle.gray,
+        label = 'Prev',
+        emoji = '\N{Black Left-Pointing Double Triangle with Vertical Bar}'
+    )
+    async def __button_previous(self, button: discord.ui.Button, interaction: discord.Interaction):
+        await interaction.response.defer()
+        await self.context.invoke(self.commands['previous'])
+
+    @discord.ui.button(
+        style = discord.ButtonStyle.red,
+        label = 'Stop',
+        emoji = '\N{Black Square for Stop}'
+    )
+    async def __button_stop(self, button: discord.ui.Button, interaction: discord.Interaction):
+        await interaction.response.defer()
+        await self.context.invoke(self.commands['stop'])
+
+    @discord.ui.button(
+        style = discord.ButtonStyle.gray,
+        label = 'Pause',
+        emoji = '\N{Double Vertical Bar}'
+    )
+    async def __button_pause(self, button: discord.ui.Button, interaction: discord.Interaction):
+        await interaction.response.defer()
+        await self.context.invoke(self.commands['pause'])
+
+    @discord.ui.button(
+        style = discord.ButtonStyle.gray,
+        label = 'Next',
+        emoji = '\N{Black Right-Pointing Double Triangle with Vertical Bar}'
+    )
+    async def __button_next(self, button: discord.ui.Button, interaction: discord.Interaction):
+        await interaction.response.defer()
+        await self.context.invoke(self.commands['skip'])
+
+class PlaylistPage(pages.Paginator):
+    def __init__(self, playlist: list[Music], title: str, **kwargs) -> None:
+        super().__init__(pages = self.__build_pages(playlist = playlist), **kwargs)
+
+        self.title = title
+        self.custom_buttons = [
+            pages.PaginatorButton(
+                "first",
+                label = "<<-", 
+                style = discord.ButtonStyle.green
+            ),
+            pages.PaginatorButton(
+                "prev",
+                label = "<-",
+                style = discord.ButtonStyle.green
+            ),
+            pages.PaginatorButton(
+                "page_indicator",
+                style = discord.ButtonStyle.gray,
+                disabled = True
+            ),
+            pages.PaginatorButton(
+                "next",
+                label = "->",
+                style = discord.ButtonStyle.green
+            ),
+            pages.PaginatorButton(
+                "last",
+                label="->>",
+                style=discord.ButtonStyle.green
+            ),
+        ]
+
+    def __build_pages(self, playlist):
+        playlist_pages = []
+
+        for count, music in enumerate(playlist, start = 1):
+            if count % 10 == 1:
+                current_embed = discord.Embed(title = f':scroll:  {self.title} (Page {int(count / 10 + 1)})')
+                playlist_pages.append(current_embed)
+
+            current_embed.add_field(
+                name = '',
+                value = f'**{count:02d}.** [__{music.title}__]({music.webpage_url})',
+                inline = False
+            )
+
+        return playlist_pages
 
 def setup(bot):
     bot.add_cog(MusicCog(bot))
